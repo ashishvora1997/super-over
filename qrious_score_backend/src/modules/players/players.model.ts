@@ -47,5 +47,5 @@ export class Player extends Model {
   declare user_id: number;
 
   @BelongsToMany(() => Team, () => TeamPlayer)
-  teams: Team[];
+  teams!: Team[];
 }

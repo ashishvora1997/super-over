@@ -2,12 +2,12 @@ import { IsString, IsOptional, IsIn } from 'class-validator';
 
 export class CreatePlayerDto {
   @IsString({ message: 'Name is required' })
-  name: string;
+  name!: string;
 
   @IsIn(['batsman', 'bowler', 'all_rounder', 'wicket_keeper'], {
     message: 'Invalid role',
   })
-  role: string;
+  role!: string;
 
   @IsOptional()
   @IsString()

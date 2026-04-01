@@ -16,27 +16,27 @@ export class Team extends Model {
     type: DataType.STRING,
     allowNull: false,
   })
-  name: string;
+  name!: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: true,
   })
-  city: string;
+  city!: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: true,
   })
-  logo: string;
+  logo!: string;
 
   @ForeignKey(() => User)
   @Column({
     type: DataType.INTEGER,
     allowNull: true,
   })
-  user_id: number;
+  user_id!: number;
 
   @BelongsToMany(() => Player, () => TeamPlayer)
-  players: Player[];
+  players!: Player[];
 }

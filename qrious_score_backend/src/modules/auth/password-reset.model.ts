@@ -22,7 +22,7 @@ export class PasswordReset extends Model {
   declare user_id: number;
 
   @BelongsTo(() => User)
-  user: User;
+  user!: User;
 
   @Column({
     type: DataType.STRING,

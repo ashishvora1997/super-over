@@ -2,8 +2,8 @@ import { IsString } from 'class-validator';
 
 export class ResetPasswordDto {
   @IsString({ message: 'Token is required' })
-  token: string;
+  token!: string;
 
   @IsString({ message: 'Password is required' })
-  password: string;
+  password!: string;
 }
