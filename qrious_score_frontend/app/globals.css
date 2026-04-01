@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+/* Your custom theme - this replaces the old tailwind.config.js */
+@theme {
+  --color-background: #f9fafb;
+  --color-foreground: #111827;
+
+  --color-primary: #1e40af;
+  --color-primary-light: #3b82f6;
+  --color-primary-dark: #1e3a8a;
+
+  --color-secondary: #111827;
+  --color-secondary-light: #1f2937;
+
+  --color-accent: #22c55e;
+  --color-accent-light: #4ade80;
+  --color-accent-dark: #16a34a;
+
+  --color-border: #e5e7eb;
+  --color-muted: #6b7280;
+
+  --color-destructive: #ef4444;
+}
