@@ -33,7 +33,7 @@ export default function ForgotPasswordPage() {
 
       toast.success("Check your email for reset link 📩");
       reset();
-    } catch (error: any) {
+    } catch (error) {
       toast.error(getErrorMessage(error));
     }
   };

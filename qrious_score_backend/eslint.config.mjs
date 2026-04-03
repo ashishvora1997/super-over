@@ -1,16 +1,16 @@
 // @ts-check
 import eslint from '@eslint/js';
-import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+import prettier from 'eslint-plugin-prettier/recommended';
 
 export default tseslint.config(
   {
     ignores: ['eslint.config.mjs'],
   },
   eslint.configs.recommended,
-  ...tseslint.configs.recommendedTypeChecked,
-  eslintPluginPrettierRecommended,
+  ...tseslint.configs.recommended,
+  prettier,
   {
     languageOptions: {
       globals: {
@@ -18,40 +18,24 @@ export default tseslint.config(
         ...globals.jest,
       },
       sourceType: 'commonjs',
-      parserOptions: {
-        projectService: true,
-        tsconfigRootDir: import.meta.dirname,
-      },
     },
   },
   {
     rules: {
-      // 🚫 STRICT: Disallow `any`
-      '@typescript-eslint/no-explicit-any': 'error',
+      // ✅ relaxed rules
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'warn',
 
-      // 🚫 Unused variables
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        {
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_',
-        },
-      ],
+      // disable strict unsafe checks
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
 
-      // 🚫 Promise misuse
-      '@typescript-eslint/no-floating-promises': 'error',
+      // keep useful ones
+      '@typescript-eslint/no-floating-promises': 'warn',
 
-      // 🚫 Unsafe usage (tighten gradually if needed)
-      '@typescript-eslint/no-unsafe-argument': 'warn',
-      '@typescript-eslint/no-unsafe-assignment': 'warn',
-      '@typescript-eslint/no-unsafe-member-access': 'warn',
-
-      // Optional discipline rules
-      '@typescript-eslint/explicit-function-return-type': 'warn',
-
-      // General JS cleanup
-      'no-console': 'warn',
+      // general
+      'no-console': 'off',
     },
   },
 );

@@ -9,12 +9,16 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token, isInitialized } = useAuthStore();
 
   useEffect(() => {
+    if (!isInitialized) return;
+
     if (!token) {
       router.replace("/login");
     }
-  }, [token, router]);
+  }, [token, isInitialized, router]);
 
-  if (!token || !isInitialized) return null;
+  if (!isInitialized) return null;
+
+  if (!token) return null;
 
   return <>{children}</>;
 }

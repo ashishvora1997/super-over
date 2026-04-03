@@ -6,9 +6,12 @@ import {
   ForeignKey,
   BelongsToMany,
 } from 'sequelize-typescript';
+
 import { User } from '../users/user.model';
 import { Player } from '../players/players.model';
 import { TeamPlayer } from './team-player.model';
+import { Tournament } from '../tournament/tournament.model';
+import { TournamentTeam } from '../tournament/tournament-team.model';
 
 @Table({ tableName: 'teams' })
 export class Team extends Model {
@@ -16,27 +19,30 @@ export class Team extends Model {
     type: DataType.STRING,
     allowNull: false,
   })
-  name!: string;
+  declare name: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: true,
   })
-  city!: string;
+  declare city: string;
 
   @Column({
     type: DataType.STRING,
     allowNull: true,
   })
-  logo!: string;
+  declare logo: string;
 
   @ForeignKey(() => User)
   @Column({
     type: DataType.INTEGER,
     allowNull: true,
   })
-  user_id!: number;
+  declare user_id: number;
 
   @BelongsToMany(() => Player, () => TeamPlayer)
-  players!: Player[];
+  declare players: Player[];
+
+  @BelongsToMany(() => Tournament, () => TournamentTeam)
+  tournaments: Tournament[];
 }
