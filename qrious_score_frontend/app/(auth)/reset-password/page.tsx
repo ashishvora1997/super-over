@@ -8,6 +8,8 @@ import toast from "react-hot-toast";
 import { getErrorMessage } from "@/app/utils/error-handler";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
+import { Input } from "@/app/components/ui/input";
+import { Button } from "@/app/components/ui/button";
 
 const resetSchema = z
   .object({
@@ -40,7 +42,7 @@ export default function ResetPasswordPage() {
   // 🚨 If no token → redirect
   useEffect(() => {
     if (!token) {
-      toast.error("Invalid reset link");
+      toast.error("Invalid or expired reset link");
       router.push("/login");
     }
   }, [token, router]);
@@ -55,12 +57,8 @@ export default function ResetPasswordPage() {
       });
 
       toast.success(res.message);
-
-      // Redirect to login after success
-      setTimeout(() => {
-        router.push("/login");
-      }, 1500);
-    } catch (error: any) {
+      router.replace("/login");
+    } catch (error: unknown) {
       toast.error(getErrorMessage(error));
     }
   };
@@ -82,21 +80,12 @@ export default function ResetPasswordPage() {
           <label className="block text-sm font-medium text-muted mb-1.5">
             New Password
           </label>
-          <input
+          <Input
             type="password"
             {...register("password")}
-            className={`w-full px-4 py-3 border rounded-2xl focus:outline-none focus:ring-2 transition-all ${
-              errors.password
-                ? "border-destructive focus:ring-destructive"
-                : "border-border focus:ring-primary"
-            }`}
             placeholder="Enter new password"
+            error={errors.password?.message}
           />
-          {errors.password && (
-            <p className="text-destructive text-sm mt-1.5 font-medium">
-              {errors.password.message}
-            </p>
-          )}
         </div>
 
         {/* Confirm Password */}
@@ -104,31 +93,18 @@ export default function ResetPasswordPage() {
           <label className="block text-sm font-medium text-muted mb-1.5">
             Confirm Password
           </label>
-          <input
+          <Input
             type="password"
             {...register("confirmPassword")}
-            className={`w-full px-4 py-3 border rounded-2xl focus:outline-none focus:ring-2 transition-all ${
-              errors.confirmPassword
-                ? "border-destructive focus:ring-destructive"
-                : "border-border focus:ring-primary"
-            }`}
             placeholder="Confirm your password"
+            error={errors.confirmPassword?.message}
           />
-          {errors.confirmPassword && (
-            <p className="text-destructive text-sm mt-1.5 font-medium">
-              {errors.confirmPassword.message}
-            </p>
-          )}
         </div>
 
         {/* Button */}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full bg-primary hover:bg-primary-dark active:scale-[0.98] text-white py-3.5 rounded-2xl font-semibold transition-all disabled:opacity-70"
-        >
+        <Button type="submit" disabled={isSubmitting} className="w-full">
           {isSubmitting ? "Resetting..." : "Reset Password"}
-        </button>
+        </Button>
       </form>
     </div>
   );

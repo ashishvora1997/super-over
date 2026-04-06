@@ -5,22 +5,33 @@ import { FormModal } from "@/app/components/ui/modal/form-modal";
 import { Input } from "@/app/components/ui/input";
 import { Select } from "@/app/components/ui/select";
 import { usePlayerStore } from "@/app/store/players.store";
+import { Player } from "@/app/types/players.types";
 import toast from "react-hot-toast";
+import { getErrorMessage } from "@/app/utils/error-handler";
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  mode?: "create" | "edit";
+  player?: Player | null;
+}
+
+interface PlayerFormState {
+  name: string;
+  role: string;
+  batting_style: string;
+  bowling_style: string;
+}
 
 export function PlayerFormModal({
   open,
   onClose,
   mode = "create",
   player,
-}: {
-  open: boolean;
-  onClose: () => void;
-  mode?: "create" | "edit";
-  player?: any;
-}) {
+}: Props) {
   const { createPlayer, updatePlayer } = usePlayerStore();
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<PlayerFormState>({
     name: "",
     role: "",
     batting_style: "",
@@ -40,7 +51,6 @@ export function PlayerFormModal({
         bowling_style: player.bowling_style || "",
       });
     } else {
-      // ✅ reset for create mode
       setForm({
         name: "",
         role: "",
@@ -69,15 +79,14 @@ export function PlayerFormModal({
 
       onClose();
 
-      // reset form
       setForm({
         name: "",
         role: "",
         batting_style: "",
         bowling_style: "",
       });
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error));
     } finally {
       setLoading(false);
     }

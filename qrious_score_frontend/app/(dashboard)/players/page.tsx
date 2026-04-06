@@ -6,6 +6,8 @@ import { ConfirmModal } from "@/app/components/ui/modal/confirm-modal";
 import { Table } from "@/app/components/ui/Table";
 import { useDebounce } from "@/app/hooks/useDebounce";
 import { usePlayerStore } from "@/app/store/players.store";
+import { Player } from "@/app/types/players.types";
+import { Column } from "@/app/types/table.types";
 import { formatRole, toTitleCase } from "@/app/utils/format";
 import { Search, UserPlus, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -22,21 +24,22 @@ export default function PlayersPage() {
   } = usePlayerStore();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"create" | "edit">("create");
-  const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [searchInput, setSearchInput] = useState("");
   const [selectedRole, setSelectedRole] = useState("all");
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [playerToDelete, setPlayerToDelete] = useState<any>(null);
+
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
 
   const debouncedSearch = useDebounce(searchInput, 500);
 
   useEffect(() => {
-    fetchPlayers("", 1, "all");
+    fetchPlayers("", 1, selectedRole);
   }, []);
 
   useEffect(() => {
     fetchPlayers(debouncedSearch, 1, selectedRole);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, selectedRole]);
 
   const handleCreate = () => {
     setMode("create");
@@ -44,13 +47,13 @@ export default function PlayersPage() {
     setOpen(true);
   };
 
-  const handleEdit = (player: any) => {
+  const handleEdit = (player: Player) => {
     setMode("edit");
     setSelectedPlayer(player);
     setOpen(true);
   };
 
-  const handleDeleteClick = (player: any) => {
+  const handleDeleteClick = (player: Player) => {
     setPlayerToDelete(player);
     setDeleteOpen(true);
   };
@@ -61,21 +64,22 @@ export default function PlayersPage() {
     try {
       await deletePlayer(playerToDelete.id);
       setDeleteOpen(false);
-    } catch (err) {
+      setPlayerToDelete(null);
+    } catch (err: unknown) {
       console.error(err);
     }
   };
 
-  const columns = [
+  const columns: Column<Player>[] = [
     {
       key: "name",
       title: "Player",
-      render: (p) => p.name,
+      render: (p: Player) => p.name,
     },
     {
       key: "role",
       title: "Role",
-      render: (p) => (
+      render: (p: Player) => (
         <span className="text-xs font-semibold px-2 py-1 rounded-lg border border-border text-muted">
           {formatRole(p.role)}
         </span>
@@ -84,18 +88,18 @@ export default function PlayersPage() {
     {
       key: "batting_style",
       title: "Batting",
-      render: (p) => toTitleCase(p.batting_style),
+      render: (p: Player) => toTitleCase(p.batting_style),
     },
     {
       key: "bowling_style",
       title: "Bowling",
-      render: (p) => toTitleCase(p.bowling_style),
+      render: (p: Player) => toTitleCase(p.bowling_style),
     },
     {
       key: "actions",
       align: "right",
       title: "Actions",
-      render: (p) => (
+      render: (p: Player) => (
         <div className="flex gap-2 justify-end">
           <button
             onClick={() => handleEdit(p)}
@@ -124,7 +128,6 @@ export default function PlayersPage() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-foreground tracking-tight">
@@ -155,13 +158,12 @@ export default function PlayersPage() {
           <input
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search by name, team or role..."
+            placeholder="Search by name..."
             className="w-full pl-10 pr-4 py-2.5 border border-border rounded-xl bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 text-sm placeholder:text-muted transition-all"
           />
         </div>
       </div>
 
-      {/* Role filter pills */}
       <div className="flex gap-2 flex-wrap">
         {roles.map((r) => (
           <button

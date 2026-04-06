@@ -1,27 +1,38 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
-import { User } from './user.model';
+import { User } from './models/user.model';
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectModel(User) private userModel: typeof User) {}
+  constructor(
+    @InjectModel(User)
+    private userModel: typeof User,
+  ) {}
 
-  async getAllUsers() {
-    return this.userModel.findAndCountAll();
-  }
-
-  async findByEmail(email: string) {
+  async findByEmail(email: string): Promise<User | null> {
     return this.userModel.findOne({
       where: { email },
-      attributes: ['id', 'name', 'email', 'password', 'role'],
     });
   }
 
-  async findById(id: number) {
-    return this.userModel.findByPk(id);
+  async findById(id: number): Promise<User> {
+    const user = await this.userModel.findByPk(id);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
   }
 
   async createUser(data: Partial<User>): Promise<User> {
     return this.userModel.create(data);
+  }
+
+  async getAllUsers(): Promise<{ rows: User[]; count: number }> {
+    return this.userModel.findAndCountAll({
+      attributes: ['id', 'name', 'email', 'role'],
+      order: [['createdAt', 'DESC']],
+    });
   }
 }
