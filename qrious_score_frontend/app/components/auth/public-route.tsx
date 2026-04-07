@@ -6,13 +6,17 @@ import { useAuthStore } from "@/app/store/auth.store";
 
 export function PublicRoute({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const token = useAuthStore((state) => state.token);
+  const { token, isInitialized } = useAuthStore();
 
   useEffect(() => {
+    if (!isInitialized) return;
+
     if (token) {
       router.replace("/dashboard");
     }
-  }, [token, router]);
+  }, [token, isInitialized]);
+
+  if (!isInitialized) return null;
 
   return <>{children}</>;
 }

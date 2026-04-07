@@ -12,13 +12,15 @@ import {
 } from "lucide-react";
 
 import { Table } from "@/app/components/ui/Table";
-import { Button } from "@/app/components/ui/button";
 import { ConfirmModal } from "@/app/components/ui/modal/confirm-modal";
 import { TeamFormModal } from "@/app/components/teams/team-form-modal";
 import { AssignPlayersModal } from "@/app/components/teams/assign-players-modal";
 
 import { useTeamStore } from "@/app/store/teams.store";
 import { useDebounce } from "@/app/hooks/useDebounce";
+import { Team } from "@/app/types/teams.types";
+import { Column } from "@/app/types/table.types";
+import { TeamDetailModal } from "@/app/components/teams/team-detail-modal";
 
 // Generates a consistent gradient from a team name
 function getTeamColor(name: string) {
@@ -84,13 +86,14 @@ export default function TeamsPage() {
 
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"create" | "edit">("create");
-  const [selectedTeam, setSelectedTeam] = useState<any>(null);
+  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [teamToDelete, setTeamToDelete] = useState<any>(null);
+  const [teamToDelete, setTeamToDelete] = useState<Team | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebounce(searchInput, 500);
   const [assignOpen, setAssignOpen] = useState(false);
-  const [teamToAssign, setTeamToAssign] = useState<any>(null);
+  const [teamToAssign, setTeamToAssign] = useState<Team | null>(null);
+  const [detailTeam, setDetailTeam] = useState<Team | null>(null);
 
   useEffect(() => {
     fetchTeams("", 1);
@@ -104,12 +107,12 @@ export default function TeamsPage() {
     setSelectedTeam(null);
     setOpen(true);
   };
-  const handleEdit = (team: any) => {
+  const handleEdit = (team: Team) => {
     setMode("edit");
     setSelectedTeam(team);
     setOpen(true);
   };
-  const handleDeleteClick = (team: any) => {
+  const handleDeleteClick = (team: Team) => {
     setTeamToDelete(team);
     setDeleteOpen(true);
   };
@@ -118,17 +121,17 @@ export default function TeamsPage() {
     await deleteTeam(teamToDelete.id);
     setDeleteOpen(false);
   };
-  const handleViewSquad = (team: any) => {
+  const handleViewSquad = (team: Team) => {
     setTeamToAssign(team);
     setAssignOpen(true);
   };
 
   // Desktop columns
-  const columns = [
+  const columns: Column<Team>[] = [
     {
       key: "name",
       title: "Team",
-      render: (t: any) => (
+      render: (t: Team) => (
         <div className="flex items-center gap-3">
           <TeamAvatar name={t.name} size="sm" />
           <span className="font-semibold text-foreground">{t.name}</span>
@@ -138,7 +141,7 @@ export default function TeamsPage() {
     {
       key: "city",
       title: "City",
-      render: (t: any) => (
+      render: (t: Team) => (
         <div className="flex items-center gap-1.5 text-muted text-sm">
           <MapPin size={13} />
           <span>{t.city || "—"}</span>
@@ -148,7 +151,7 @@ export default function TeamsPage() {
     {
       key: "players",
       title: "Squad",
-      render: (t: any) => {
+      render: (t: Team) => {
         const count = t.players?.length || 0;
         return (
           <span
@@ -168,23 +171,32 @@ export default function TeamsPage() {
       key: "actions",
       title: "Actions",
       align: "right",
-      render: (t: any) => (
+      render: (t: Team) => (
         <div className="flex gap-1.5 justify-end">
           <button
-            onClick={() => handleViewSquad(t)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleViewSquad(t);
+            }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
           >
             <Shield size={12} />
             Squad
           </button>
           <button
-            onClick={() => handleEdit(t)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEdit(t);
+            }}
             className="p-1.5 rounded-lg hover:bg-primary/10 text-muted hover:text-primary transition-colors"
           >
             <Pencil size={14} />
           </button>
           <button
-            onClick={() => handleDeleteClick(t)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteClick(t);
+            }}
             className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted hover:text-destructive transition-colors"
           >
             <Trash2 size={14} />
@@ -268,7 +280,7 @@ export default function TeamsPage() {
             </button>
           </div>
         ) : (
-          teams.map((team: any) => {
+          teams.map((team: Team) => {
             const color = getTeamColor(team.name);
             const playerCount = team.players?.length || 0;
             return (
@@ -374,6 +386,7 @@ export default function TeamsPage() {
           pageSize={pageSize}
           onPageChange={(newPage) => fetchTeams(debouncedSearch, newPage)}
           emptyMessage="No teams found"
+          onRowClick={(team) => setDetailTeam(team)}
         />
       </div>
 
@@ -397,6 +410,7 @@ export default function TeamsPage() {
         onClose={() => setAssignOpen(false)}
         team={teamToAssign}
       />
+      <TeamDetailModal team={detailTeam} onClose={() => setDetailTeam(null)} />
     </div>
   );
 }

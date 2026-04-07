@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
-import { Player } from './players.model';
+import { Player } from './models/players.model';
 import { CreatePlayerDto } from './dtos/create-player.dto';
 import { UpdatePlayerDto } from './dtos/update-player.dto';
 import { Op } from 'sequelize';
@@ -10,6 +10,7 @@ import {
   PlayerWhereOptions,
 } from './interfaces/find-players-query.interface';
 import { SuccessResponse } from 'src/common/types/response.type';
+import { getPagination } from 'src/common/utils/pagination';
 
 @Injectable()
 export class PlayersService {
@@ -38,8 +39,9 @@ export class PlayersService {
   async findAll(
     query: FindPlayersQuery = {},
   ): Promise<SuccessResponse<Player[]>> {
-    const { search, page = 1, limit = 10, role } = query;
-    const offset = (page - 1) * limit;
+    const { search, role } = query;
+
+    const { page, limit, offset } = getPagination(query.page, query.limit);
 
     const where: PlayerWhereOptions = {};
 
@@ -49,7 +51,7 @@ export class PlayersService {
       };
     }
 
-    if (role && role !== 'all') {
+    if (role && role !== 'all' && role.toLowerCase() !== 'all') {
       where.role = role;
     }
 
@@ -67,18 +69,24 @@ export class PlayersService {
     });
   }
 
-  async findOne(id: number) {
+  async findOne(id: number): Promise<SuccessResponse<Player>> {
     const player = await this.findPlayerById(id);
     return successResponse('Player retrieved successfully', player);
   }
 
-  async update(id: number, data: UpdatePlayerDto) {
+  async update(
+    id: number,
+    data: UpdatePlayerDto,
+  ): Promise<SuccessResponse<Player>> {
     const player = await this.findPlayerById(id);
-    await player.update(data);
+    await player.update({
+      ...data,
+      name: data.name?.trim(),
+    });
     return successResponse('Player updated successfully', player);
   }
 
-  async delete(id: number) {
+  async delete(id: number): Promise<SuccessResponse<null>> {
     const player = await this.findPlayerById(id);
     await player.destroy();
     return successResponse('Player deleted successfully', null);

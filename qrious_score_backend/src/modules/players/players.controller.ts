@@ -23,7 +23,7 @@ export class PlayersController {
   constructor(private playersService: PlayersService) {}
 
   @Post()
-  @Roles('admin', 'scorer')
+  // @Roles('admin', 'scorer')
   create(@Body() body: CreatePlayerDto) {
     return this.playersService.create(body);
   }
@@ -40,7 +40,7 @@ export class PlayersController {
   }
 
   @Patch(':id')
-  @Roles('admin', 'scorer')
+  // @Roles('admin', 'scorer')
   update(@Param('id') id: string, @Body() body: UpdatePlayerDto) {
     return this.playersService.update(+id, body);
   }

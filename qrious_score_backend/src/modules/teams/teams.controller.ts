@@ -13,6 +13,7 @@ import { CreateTeamDto } from './dtos/create-team.dto';
 import { UpdateTeamDto } from './dtos/update-team.dto';
 import { AssignPlayersDto } from './dtos/assign-players.dto';
 import { FindTeamsQuery } from './interfaces/find-teams-query.interface';
+import { SetCaptainDto } from './dtos/set-captain.dto';
 
 @Controller('teams')
 export class TeamsController {
@@ -46,5 +47,10 @@ export class TeamsController {
   @Post('assign-players')
   assignPlayers(@Body() data: AssignPlayersDto) {
     return this.teamsService.assignPlayers(data);
+  }
+
+  @Post('set-captain')
+  setCap(@Body() data: SetCaptainDto) {
+    return this.teamsService.setCaptain(data);
   }
 }

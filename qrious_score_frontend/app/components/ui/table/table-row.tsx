@@ -3,14 +3,21 @@ import { Column } from "@/app/types/table.types";
 export function TableRow<T>({
   row,
   columns,
+  onRowClick,
 }: {
   row: T;
   columns: Column<T>[];
+  onRowClick?: (row: T) => void;
 }) {
   return (
-    <tr className="hover:bg-gray-50/70 transition-colors group">
+    <tr
+      className={`hover:bg-gray-50/70 transition-colors group ${
+        onRowClick ? "cursor-pointer" : ""
+      }`}
+      onClick={() => onRowClick?.(row)}
+    >
       {columns.map((col) => {
-        const value = (row as any)[col.key];
+        const value = (row as Record<string, unknown>)[col.key as string];
         return (
           <td
             key={col.key}
@@ -19,7 +26,7 @@ export function TableRow<T>({
             {col.render ? (
               col.render(row)
             ) : value && value !== "" ? (
-              value
+              String(value)
             ) : (
               <span className="text-muted">—</span>
             )}

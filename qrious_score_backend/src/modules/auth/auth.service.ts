@@ -5,15 +5,23 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
+
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
+
 import { RegisterDto } from './dtos/register.dto';
 import { LoginDto } from './dtos/login.dto';
 import { ForgotPasswordDto } from './dtos/forgot-password.dto';
+import { ResetPasswordDto } from './dtos/reset-password.dto';
+
 import { PasswordReset } from './password-reset.model';
 import { InjectModel } from '@nestjs/sequelize';
-import { ResetPasswordDto } from './dtos/reset-password.dto';
 import { EmailService } from 'src/email/email.service';
+
+import { SuccessResponse } from 'src/common/types/response.type';
+import { AuthResponse } from 'src/common/types/auth-response.type';
+import { successResponse } from 'src/common/utils/response.util';
+import { TokenUser } from './interfaces/token-user.interface';
 
 @Injectable()
 export class AuthService {
@@ -23,14 +31,23 @@ export class AuthService {
 
     @InjectModel(PasswordReset)
     private passwordResetModel: typeof PasswordReset,
+
     private readonly emailService: EmailService,
   ) {}
 
-  async register(data: RegisterDto) {
+  private generateToken(user: TokenUser): string {
+    return this.jwtService.sign({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    });
+  }
+
+  async register(data: RegisterDto): Promise<SuccessResponse<AuthResponse>> {
     const existingUser = await this.usersService.findByEmail(data.email);
 
     if (existingUser) {
-      throw new BadRequestException('Email already exist');
+      throw new BadRequestException('Email already exists');
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
@@ -41,20 +58,24 @@ export class AuthService {
       role: 'viewer',
     });
 
-    const token = this.jwtService.sign({
-      id: user.id,
+    const token = this.generateToken({
+      id: user.id!,
       email: user.email,
       role: user.role,
     });
 
-    return {
-      message: 'User registered successfully',
+    return successResponse('User registered successfully', {
       token,
-      user,
-    };
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+      },
+    });
   }
 
-  async login(data: LoginDto) {
+  async login(data: LoginDto): Promise<SuccessResponse<AuthResponse>> {
     const user = await this.usersService.findByEmail(data.email);
 
     if (!user) {
@@ -67,13 +88,13 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const token = this.jwtService.sign({
-      id: user.id,
+    const token = this.generateToken({
+      id: user.id!,
       email: user.email,
       role: user.role,
     });
 
-    return {
+    return successResponse('Login successful', {
       token,
       user: {
         id: user.id,
@@ -81,16 +102,19 @@ export class AuthService {
         role: user.role,
         name: user.name,
       },
-    };
+    });
   }
 
-  async forgotPassword(data: ForgotPasswordDto) {
+  async forgotPassword(
+    data: ForgotPasswordDto,
+  ): Promise<SuccessResponse<null>> {
     const user = await this.usersService.findByEmail(data.email);
 
     if (!user) {
-      return {
-        message: 'If the email exists, a reset link has been sent',
-      };
+      return successResponse(
+        'If the email exists, a reset link has been sent',
+        null,
+      );
     }
 
     const rawToken = crypto.randomBytes(32).toString('hex');
@@ -100,7 +124,6 @@ export class AuthService {
       .update(rawToken)
       .digest('hex');
 
-    // Expiry (15 minutes)
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     await this.passwordResetModel.destroy({
@@ -117,12 +140,13 @@ export class AuthService {
 
     await this.emailService.sendPasswordResetEmail(user.email, resetLink);
 
-    return {
-      message: 'If the email exists, a reset link has been sent',
-    };
+    return successResponse(
+      'If the email exists, a reset link has been sent',
+      null,
+    );
   }
 
-  async resetPassword(data: ResetPasswordDto) {
+  async resetPassword(data: ResetPasswordDto): Promise<SuccessResponse<null>> {
     const { token, password } = data;
 
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
@@ -141,18 +165,14 @@ export class AuthService {
       throw new BadRequestException('Invalid request');
     }
 
-    // hash new password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     await user.update({ password: hashedPassword });
 
-    // delete token.. one time use
     await this.passwordResetModel.destroy({
       where: { user_id: user.id },
     });
 
-    return {
-      message: 'Password has been reset successfully',
-    };
+    return successResponse('Password has been reset successfully', null);
   }
 }
