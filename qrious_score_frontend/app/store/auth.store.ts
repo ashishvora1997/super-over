@@ -23,18 +23,22 @@ export const useAuthStore = create<AuthState>((set) => ({
   isInitialized: false,
 
   setAuth: (data) => {
+    document.cookie = `token=${data.token}; path=/; max-age=86400; SameSite=Lax`;
+
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
 
-    set({
-      user: data.user,
-      token: data.token,
-      isInitialized: true,
-    });
+    set({ user: data.user, token: data.token });
   },
 
   loadUserFromStorage: () => {
-    const token = localStorage.getItem("token");
+    const token =
+      localStorage.getItem("token") ||
+      document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("token="))
+        ?.split("=")[1];
+
     const user = localStorage.getItem("user");
 
     set({
@@ -45,13 +49,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: () => {
+    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+
     localStorage.removeItem("token");
     localStorage.removeItem("user");
 
-    set({
-      user: null,
-      token: null,
-      isInitialized: true,
-    });
+    set({ user: null, token: null });
   },
 }));

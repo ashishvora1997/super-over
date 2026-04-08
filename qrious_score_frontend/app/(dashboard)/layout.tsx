@@ -19,10 +19,36 @@ import { useRouter } from "next/navigation";
 import { ProtectedRoute } from "../components/auth/protected-route";
 
 const navItems = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Players", href: "/players", icon: Users },
-  { name: "Teams", href: "/teams", icon: UsersRound },
-  { name: "Matches", href: "/matches", icon: Trophy },
+  {
+    name: "Dashboard",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+    roles: ["admin", "scorer", "viewer"],
+  },
+  {
+    name: "Players",
+    href: "/players",
+    icon: Users,
+    roles: ["admin", "scorer", "viewer"],
+  },
+  {
+    name: "Teams",
+    href: "/teams",
+    icon: UsersRound,
+    roles: ["admin", "scorer", "viewer"],
+  },
+  {
+    name: "Matches",
+    href: "/matches",
+    icon: Trophy,
+    roles: ["admin", "scorer", "viewer"],
+  },
+  {
+    name: "Users",
+    href: "/users",
+    icon: Users,
+    roles: ["admin"], // 🔥 ONLY ADMIN
+  },
 ];
 
 export default function DashboardLayout({
@@ -34,6 +60,7 @@ export default function DashboardLayout({
   const [open, setOpen] = useState(false);
 
   const logout = useAuthStore((s) => s.logout);
+  const user = useAuthStore((s) => s.user);
   const router = useRouter();
 
   return (
@@ -116,31 +143,33 @@ export default function DashboardLayout({
               </div>
 
               <nav className="flex-1 px-4 py-4 space-y-1">
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  const active = pathname === item.href;
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      onClick={() => setOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                        active
-                          ? "bg-primary text-white shadow-md shadow-primary/20"
-                          : "text-muted hover:bg-gray-100 hover:text-foreground"
-                      }`}
-                    >
-                      <Icon size={18} strokeWidth={active ? 2.5 : 2} />
-                      {item.name}
-                      {active && (
-                        <ChevronRight
-                          size={14}
-                          className="ml-auto opacity-70"
-                        />
-                      )}
-                    </Link>
-                  );
-                })}
+                {navItems
+                  .filter((item) => item.roles.includes(user?.role || "viewer"))
+                  .map((item) => {
+                    const Icon = item.icon;
+                    const active = pathname === item.href;
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        onClick={() => setOpen(false)}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                          active
+                            ? "bg-primary text-white shadow-md shadow-primary/20"
+                            : "text-muted hover:bg-gray-100 hover:text-foreground"
+                        }`}
+                      >
+                        <Icon size={18} strokeWidth={active ? 2.5 : 2} />
+                        {item.name}
+                        {active && (
+                          <ChevronRight
+                            size={14}
+                            className="ml-auto opacity-70"
+                          />
+                        )}
+                      </Link>
+                    );
+                  })}
               </nav>
 
               <div className="px-4 py-4 border-t border-border">
@@ -182,35 +211,40 @@ export default function DashboardLayout({
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted px-3 mb-3">
                 Main Menu
               </p>
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const active = pathname === item.href;
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
-                      active
-                        ? "bg-primary text-white shadow-md shadow-primary/20"
-                        : "text-muted hover:bg-gray-50 hover:text-foreground"
-                    }`}
-                  >
-                    <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+              {navItems
+                .filter((item) => item.roles.includes(user?.role || "viewer"))
+                .map((item) => {
+                  const Icon = item.icon;
+                  const active = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
                         active
-                          ? "bg-white/20"
-                          : "bg-gray-100 group-hover:bg-gray-200"
+                          ? "bg-primary text-white shadow-md shadow-primary/20"
+                          : "text-muted hover:bg-gray-50 hover:text-foreground"
                       }`}
                     >
-                      <Icon size={16} strokeWidth={active ? 2.5 : 2} />
-                    </div>
-                    {item.name}
-                    {active && (
-                      <ChevronRight size={14} className="ml-auto opacity-60" />
-                    )}
-                  </Link>
-                );
-              })}
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                          active
+                            ? "bg-white/20"
+                            : "bg-gray-100 group-hover:bg-gray-200"
+                        }`}
+                      >
+                        <Icon size={16} strokeWidth={active ? 2.5 : 2} />
+                      </div>
+                      {item.name}
+                      {active && (
+                        <ChevronRight
+                          size={14}
+                          className="ml-auto opacity-60"
+                        />
+                      )}
+                    </Link>
+                  );
+                })}
             </nav>
 
             {/* Footer */}
@@ -238,26 +272,28 @@ export default function DashboardLayout({
 
         {/* Mobile Bottom Nav */}
         <nav className="md:hidden h-16 bg-white border-t border-border flex justify-around items-center px-1 safe-area-pb">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const active = pathname === item.href;
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex flex-col items-center justify-center gap-1 py-2 px-4 rounded-xl transition-colors ${
-                  active ? "text-primary" : "text-muted hover:text-foreground"
-                }`}
-              >
-                <div
-                  className={`p-1.5 rounded-lg transition-colors ${active ? "bg-primary/10" : ""}`}
+          {navItems
+            .filter((item) => item.roles.includes(user?.role || "viewer"))
+            .map((item) => {
+              const Icon = item.icon;
+              const active = pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`flex flex-col items-center justify-center gap-1 py-2 px-4 rounded-xl transition-colors ${
+                    active ? "text-primary" : "text-muted hover:text-foreground"
+                  }`}
                 >
-                  <Icon size={18} strokeWidth={active ? 2.5 : 1.8} />
-                </div>
-                <span className="text-[10px] font-medium">{item.name}</span>
-              </Link>
-            );
-          })}
+                  <div
+                    className={`p-1.5 rounded-lg transition-colors ${active ? "bg-primary/10" : ""}`}
+                  >
+                    <Icon size={18} strokeWidth={active ? 2.5 : 1.8} />
+                  </div>
+                  <span className="text-[10px] font-medium">{item.name}</span>
+                </Link>
+              );
+            })}
         </nav>
       </div>
     </ProtectedRoute>

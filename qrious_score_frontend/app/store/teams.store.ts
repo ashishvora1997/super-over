@@ -77,22 +77,6 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     }
   },
 
-  // setCaptain: async (team_id: number, player_id: number) => {
-  //   const res = await setCaptainAPI({ team_id, player_id });
-
-  //   set((state) => ({
-  //     teams: state.teams.map((t) =>
-  //       t.id === team_id
-  //         ? {
-  //             ...t,
-  //             captain: res.data.captain,
-  //             captain_id: player_id,
-  //           }
-  //         : t,
-  //     ),
-  //   }));
-  // },
-
   updateCaptainInStore: (teamId: number, playerId: number) => {
     set((state) => ({
       teams: state.teams.map((t) =>

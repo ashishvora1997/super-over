@@ -51,7 +51,7 @@ export default function RegisterPage() {
       setAuth(res.data);
       toast.success("Account created successfully 🎉");
 
-      router.replace("/dashboard");
+      window.location.href = "/dashboard";
     } catch (error: unknown) {
       toast.error(getErrorMessage(error));
     }
@@ -60,15 +60,12 @@ export default function RegisterPage() {
   return (
     <PublicRoute>
       <div className="w-full max-w-md mx-auto bg-white border border-border shadow-md p-8 rounded-3xl">
-        {/* Clean centered layout without card */}
         <div className="w-full max-w-md">
-          {/* Title */}
           <h1 className="text-3xl font-semibold text-center mb-8">
             Create Account
           </h1>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Name */}
             <div>
               <label className="block text-sm font-medium text-muted mb-1.5">
                 Name
@@ -80,7 +77,6 @@ export default function RegisterPage() {
               />
             </div>
 
-            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-muted mb-1.5">
                 Email
@@ -93,7 +89,6 @@ export default function RegisterPage() {
               />
             </div>
 
-            {/* Password */}
             <div>
               <label className="block text-sm font-medium text-muted mb-1.5">
                 Password
@@ -106,13 +101,11 @@ export default function RegisterPage() {
               />
             </div>
 
-            {/* Button */}
             <Button type="submit" disabled={isSubmitting} className="w-full">
               {isSubmitting ? "Creating account..." : "Create Account"}
             </Button>
           </form>
 
-          {/* Footer */}
           <p className="text-sm text-center text-muted mt-8">
             Already have an account?{" "}
             <Link

@@ -47,9 +47,18 @@ export function AssignPlayersModal({
 
   const handleSubmit = async () => {
     if (!team) return;
+
+    const { fetchTeams, search, page } = useTeamStore.getState();
+
     try {
       setLoading(true);
-      await assignPlayers({ team_id: team.id, player_ids: selected });
+
+      await assignPlayers({
+        team_id: team.id,
+        player_ids: selected,
+      });
+
+      await fetchTeams(search, page);
       toast.success("Players assigned successfully");
       onClose();
     } catch (err: unknown) {

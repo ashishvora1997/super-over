@@ -17,14 +17,12 @@ import {
 export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);
 
-  console.log("User:", user);
-
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-foreground">
-          Welcome back {user.name} 👋
+          Welcome back {user?.name} 👋
         </h2>
         <p className="text-sm text-muted">Here's what's happening today</p>
       </div>

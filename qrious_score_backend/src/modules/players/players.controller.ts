@@ -23,13 +23,12 @@ export class PlayersController {
   constructor(private playersService: PlayersService) {}
 
   @Post()
-  // @Roles('admin', 'scorer')
+  @Roles('scorer')
   create(@Body() body: CreatePlayerDto) {
     return this.playersService.create(body);
   }
 
   @Get()
-  @Roles('admin', 'scorer', 'viewer')
   findAll(@Query() query: FindPlayersQuery) {
     return this.playersService.findAll(query);
   }
@@ -40,7 +39,7 @@ export class PlayersController {
   }
 
   @Patch(':id')
-  // @Roles('admin', 'scorer')
+  @Roles('scorer')
   update(@Param('id') id: string, @Body() body: UpdatePlayerDto) {
     return this.playersService.update(+id, body);
   }

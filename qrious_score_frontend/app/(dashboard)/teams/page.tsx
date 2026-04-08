@@ -21,8 +21,10 @@ import { useDebounce } from "@/app/hooks/useDebounce";
 import { Team } from "@/app/types/teams.types";
 import { Column } from "@/app/types/table.types";
 import { TeamDetailModal } from "@/app/components/teams/team-detail-modal";
+import { RoleGuard } from "@/app/components/auth/role-guard";
+import { useAuthStore } from "@/app/store/auth.store";
+import { hasRole } from "@/app/utils/permissions";
 
-// Generates a consistent gradient from a team name
 function getTeamColor(name: string) {
   const colors = [
     {
@@ -83,6 +85,7 @@ function TeamAvatar({
 export default function TeamsPage() {
   const { teams, total, page, pageSize, fetchTeams, deleteTeam, loading } =
     useTeamStore();
+  const user = useAuthStore((s) => s.user);
 
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"create" | "edit">("create");
@@ -98,6 +101,7 @@ export default function TeamsPage() {
   useEffect(() => {
     fetchTeams("", 1);
   }, []);
+
   useEffect(() => {
     fetchTeams(debouncedSearch, 1);
   }, [debouncedSearch]);
@@ -107,26 +111,38 @@ export default function TeamsPage() {
     setSelectedTeam(null);
     setOpen(true);
   };
+
   const handleEdit = (team: Team) => {
+    if (!hasRole(user?.role, ["admin", "scorer"])) return;
+
     setMode("edit");
     setSelectedTeam(team);
     setOpen(true);
   };
+
   const handleDeleteClick = (team: Team) => {
+    if (!hasRole(user?.role, ["admin"])) return;
+
     setTeamToDelete(team);
     setDeleteOpen(true);
   };
+
   const handleDeleteConfirm = async () => {
     if (!teamToDelete) return;
     await deleteTeam(teamToDelete.id);
     setDeleteOpen(false);
   };
+
   const handleViewSquad = (team: Team) => {
+    if (!hasRole(user?.role, ["admin", "scorer"])) return;
+
     setTeamToAssign(team);
     setAssignOpen(true);
   };
 
-  // Desktop columns
+  const canModify = hasRole(user?.role, ["admin", "scorer"]);
+  const isAdmin = hasRole(user?.role, ["admin"]);
+
   const columns: Column<Team>[] = [
     {
       key: "name",
@@ -167,48 +183,59 @@ export default function TeamsPage() {
         );
       },
     },
-    {
-      key: "actions",
-      title: "Actions",
-      align: "right",
-      render: (t: Team) => (
-        <div className="flex gap-1.5 justify-end">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleViewSquad(t);
-            }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-          >
-            <Shield size={12} />
-            Squad
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEdit(t);
-            }}
-            className="p-1.5 rounded-lg hover:bg-primary/10 text-muted hover:text-primary transition-colors"
-          >
-            <Pencil size={14} />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDeleteClick(t);
-            }}
-            className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted hover:text-destructive transition-colors"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
-      ),
-    },
+    ...(canModify
+      ? [
+          {
+            key: "actions",
+            title: "Actions",
+            align: "right" as const,
+            render: (t: Team) => (
+              <div className="flex gap-1.5 justify-end">
+                {canModify && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewSquad(t);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                  >
+                    <Shield size={14} />
+                    Manage Squad
+                  </button>
+                )}
+
+                {canModify && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEdit(t);
+                    }}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-50 hover:bg-primary/10 text-muted hover:text-primary transition-colors"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                )}
+
+                {isAdmin && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteClick(t);
+                    }}
+                    className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted hover:text-destructive transition-colors"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
     <div className="space-y-5 max-w-6xl mx-auto">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-foreground tracking-tight">
@@ -220,17 +247,19 @@ export default function TeamsPage() {
               : "Manage your cricket teams"}
           </p>
         </div>
-        <button
-          onClick={handleCreate}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-semibold rounded-xl shadow-md shadow-primary/25 transition-all active:scale-95"
-        >
-          <Plus size={16} />
-          <span className="hidden sm:inline">Add Team</span>
-          <span className="sm:hidden">Add</span>
-        </button>
+
+        <RoleGuard allowedRoles={["admin", "scorer"]}>
+          <button
+            onClick={handleCreate}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-semibold rounded-xl shadow-md shadow-primary/25 transition-all active:scale-95"
+          >
+            <Plus size={16} />
+            <span className="hidden sm:inline">Add Team</span>
+            <span className="sm:hidden">Add</span>
+          </button>
+        </RoleGuard>
       </div>
 
-      {/* Search */}
       <div className="relative">
         <Search
           size={15}
@@ -244,7 +273,6 @@ export default function TeamsPage() {
         />
       </div>
 
-      {/* ── MOBILE VIEW ── */}
       <div className="sm:hidden space-y-3">
         {loading ? (
           Array.from({ length: 3 }).map((_, i) => (
@@ -288,7 +316,6 @@ export default function TeamsPage() {
                 key={team.id}
                 className="bg-white border border-border rounded-2xl overflow-hidden shadow-sm"
               >
-                {/* Color accent stripe */}
                 <div className={`h-1 w-full bg-gradient-to-r ${color.bg}`} />
 
                 <div className="p-4">
@@ -317,7 +344,6 @@ export default function TeamsPage() {
                       </span>
                     </div>
 
-                    {/* Icon actions top-right */}
                     <div className="flex gap-1 flex-shrink-0">
                       <button
                         onClick={() => handleEdit(team)}
@@ -334,7 +360,6 @@ export default function TeamsPage() {
                     </div>
                   </div>
 
-                  {/* Full-width squad CTA */}
                   <button
                     onClick={() => handleViewSquad(team)}
                     className={`mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r ${color.bg} shadow-sm active:scale-[0.98] transition-transform`}
@@ -348,7 +373,6 @@ export default function TeamsPage() {
           })
         )}
 
-        {/* Mobile pagination */}
         {!loading && teams.length > 0 && total > pageSize && (
           <div className="flex items-center justify-between pt-1 px-1">
             <span className="text-xs text-muted">
@@ -375,9 +399,8 @@ export default function TeamsPage() {
         )}
       </div>
 
-      {/* ── DESKTOP VIEW ── */}
       <div className="hidden sm:block">
-        <Table
+        <Table<Team>
           data={teams}
           columns={columns}
           loading={loading}
@@ -390,7 +413,6 @@ export default function TeamsPage() {
         />
       </div>
 
-      {/* Modals */}
       <TeamFormModal
         open={open}
         onClose={() => setOpen(false)}
