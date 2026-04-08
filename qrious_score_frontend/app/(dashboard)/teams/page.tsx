@@ -101,6 +101,7 @@ export default function TeamsPage() {
   useEffect(() => {
     fetchTeams("", 1);
   }, []);
+
   useEffect(() => {
     fetchTeams(debouncedSearch, 1);
   }, [debouncedSearch]);
@@ -110,21 +111,31 @@ export default function TeamsPage() {
     setSelectedTeam(null);
     setOpen(true);
   };
+
   const handleEdit = (team: Team) => {
+    if (!hasRole(user?.role, ["admin", "scorer"])) return;
+
     setMode("edit");
     setSelectedTeam(team);
     setOpen(true);
   };
+
   const handleDeleteClick = (team: Team) => {
+    if (!hasRole(user?.role, ["admin"])) return;
+
     setTeamToDelete(team);
     setDeleteOpen(true);
   };
+
   const handleDeleteConfirm = async () => {
     if (!teamToDelete) return;
     await deleteTeam(teamToDelete.id);
     setDeleteOpen(false);
   };
+
   const handleViewSquad = (team: Team) => {
+    if (!hasRole(user?.role, ["admin", "scorer"])) return;
+
     setTeamToAssign(team);
     setAssignOpen(true);
   };
