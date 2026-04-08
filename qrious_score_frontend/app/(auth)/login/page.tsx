@@ -47,7 +47,7 @@ export default function LoginPage() {
       setAuth(res.data);
       toast.success("Welcome back 👋");
 
-      router.replace("/dashboard");
+      window.location.href = "/dashboard";
     } catch (error: unknown) {
       toast.error(getErrorMessage(error));
     }
@@ -56,13 +56,11 @@ export default function LoginPage() {
   return (
     <PublicRoute>
       <div className="w-full max-w-md mx-auto bg-white border border-border shadow-sm p-8 rounded-2xl">
-        {/* Title */}
         <h1 className="text-3xl font-semibold text-center mb-8">
           Welcome Back
         </h1>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Email */}
           <div>
             <label className="block text-sm font-medium text-muted mb-1.5">
               Email
@@ -75,7 +73,6 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* Password */}
           <div>
             <div className="flex justify-between items-center mb-1.5">
               <label className="text-sm font-medium text-muted">Password</label>

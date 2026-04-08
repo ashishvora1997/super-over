@@ -14,14 +14,21 @@ export function TableRow<T>({
       className={`hover:bg-gray-50/70 transition-colors group ${
         onRowClick ? "cursor-pointer" : ""
       }`}
-      onClick={() => onRowClick?.(row)}
+      onClick={(e) => {
+        if (e.defaultPrevented) return;
+
+        onRowClick?.(row);
+      }}
     >
       {columns.map((col) => {
         const value = (row as Record<string, unknown>)[col.key as string];
+
         return (
           <td
             key={col.key}
-            className={`px-5 py-3.5 ${col.align === "right" ? "text-right" : ""}`}
+            className={`px-5 py-3.5 ${
+              col.align === "right" ? "text-right" : ""
+            }`}
           >
             {col.render ? (
               col.render(row)

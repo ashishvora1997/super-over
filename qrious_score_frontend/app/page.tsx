@@ -1,8 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useAuthStore } from "./store/auth.store";
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/app/store/auth.store";
 
 export default function HomePage() {
   const router = useRouter();
@@ -10,9 +10,12 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!isInitialized) return;
-
-    router.replace(token ? "/dashboard" : "/login");
-  }, [token, isInitialized]);
+    if (token) {
+      window.location.href = "/dashboard";
+    } else {
+      router.replace("/login");
+    }
+  }, [isInitialized, token, router]);
 
   return null;
 }

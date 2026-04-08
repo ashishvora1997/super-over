@@ -1,14 +1,17 @@
 "use client";
 
+import { RoleGuard } from "@/app/components/auth/role-guard";
 import { PlayerFormModal } from "@/app/components/players/player-form-modal";
 import { Button } from "@/app/components/ui/button";
 import { ConfirmModal } from "@/app/components/ui/modal/confirm-modal";
 import { Table } from "@/app/components/ui/Table";
 import { useDebounce } from "@/app/hooks/useDebounce";
+import { useAuthStore } from "@/app/store/auth.store";
 import { usePlayerStore } from "@/app/store/players.store";
 import { Player } from "@/app/types/players.types";
 import { Column } from "@/app/types/table.types";
 import { formatRole, toTitleCase } from "@/app/utils/format";
+import { hasRole } from "@/app/utils/permissions";
 import { Search, UserPlus, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -32,6 +35,8 @@ export default function PlayersPage() {
   const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
 
   const debouncedSearch = useDebounce(searchInput, 500);
+
+  const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
     fetchPlayers("", 1, selectedRole);
@@ -70,54 +75,60 @@ export default function PlayersPage() {
     }
   };
 
-  const columns: Column<Player>[] = [
+  const baseColumns: Column<Player>[] = [
     {
       key: "name",
       title: "Player",
-      render: (p: Player) => p.name,
+      render: (p) => p.name,
     },
     {
       key: "role",
       title: "Role",
-      render: (p: Player) => (
-        <span className="text-xs font-semibold px-2 py-1 rounded-lg border border-border text-muted">
-          {formatRole(p.role)}
-        </span>
-      ),
+      render: (p) => formatRole(p.role),
     },
     {
       key: "batting_style",
       title: "Batting",
-      render: (p: Player) => toTitleCase(p.batting_style),
+      render: (p) => toTitleCase(p.batting_style),
     },
     {
       key: "bowling_style",
       title: "Bowling",
-      render: (p: Player) => toTitleCase(p.bowling_style),
-    },
-    {
-      key: "actions",
-      align: "right",
-      title: "Actions",
-      render: (p: Player) => (
-        <div className="flex gap-2 justify-end">
-          <button
-            onClick={() => handleEdit(p)}
-            className="p-2 rounded-lg hover:bg-primary/10 text-primary"
-          >
-            <Pencil size={16} />
-          </button>
-
-          <button
-            onClick={() => handleDeleteClick(p)}
-            className="p-2 rounded-lg hover:bg-destructive/10 text-destructive"
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-      ),
+      render: (p) => toTitleCase(p.bowling_style),
     },
   ];
+
+  const canModify = hasRole(user?.role, ["admin", "scorer"]);
+
+  const columns: Column<Player>[] = canModify
+    ? [
+        ...baseColumns,
+        {
+          key: "actions",
+          title: "Actions",
+          align: "right",
+          render: (p) => (
+            <div className="flex gap-2 justify-end">
+              <button
+                className="p-2 rounded-lg hover:bg-primary/10 text-primary"
+                onClick={() => handleEdit(p)}
+              >
+                <Pencil size={16} />
+              </button>
+
+              {hasRole(user?.role, ["admin"]) && (
+                <button
+                  className="p-2 rounded-lg hover:bg-destructive/10 text-destructive"
+                  onClick={() => handleDeleteClick(p)}
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </div>
+          ),
+        },
+      ]
+    : baseColumns;
 
   const roles = [
     { label: "All", value: "all" },
@@ -138,13 +149,15 @@ export default function PlayersPage() {
           </p>
         </div>
 
-        <Button
-          onClick={handleCreate}
-          className="inline-flex items-center gap-2"
-        >
-          <UserPlus size={16} />
-          Add Player
-        </Button>
+        <RoleGuard allowedRoles={["admin", "scorer"]}>
+          <Button
+            onClick={handleCreate}
+            className="inline-flex items-center gap-2"
+          >
+            <UserPlus size={16} />
+            Add Player
+          </Button>
+        </RoleGuard>
       </div>
 
       {/* Search & Filter */}
@@ -183,7 +196,7 @@ export default function PlayersPage() {
         ))}
       </div>
 
-      <Table
+      <Table<Player>
         data={players}
         columns={columns}
         loading={loading}

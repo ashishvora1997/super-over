@@ -1,4 +1,3 @@
-// components/teams/team-detail-modal.tsx
 import {
   X,
   MapPin,
@@ -9,7 +8,6 @@ import {
   Home,
 } from "lucide-react";
 import { Team } from "@/app/types/teams.types";
-// import { TeamAvatar }
 
 interface TeamDetailModalProps {
   team: Team | null;
@@ -28,7 +26,6 @@ export function TeamDetailModal({ team, onClose }: TeamDetailModalProps) {
         className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-border">
           <div className="flex items-center gap-4">
             {/* <TeamAvatar name={team.name} size="md" /> */}
@@ -47,7 +44,6 @@ export function TeamDetailModal({ team, onClose }: TeamDetailModalProps) {
           </button>
         </div>
 
-        {/* Body */}
         <div className="px-6 py-5 space-y-4">
           {team.description && (
             <p className="text-sm text-muted leading-relaxed">
@@ -91,7 +87,6 @@ export function TeamDetailModal({ team, onClose }: TeamDetailModalProps) {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="px-6 py-4 bg-gray-50 border-t border-border flex justify-end">
           <button
             onClick={onClose}
