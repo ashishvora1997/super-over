@@ -6,11 +6,13 @@ import { MultiSelect } from "@/app/components/ui/multi-select";
 import { useTeamStore } from "@/app/store/teams.store";
 import { useTournamentStore } from "@/app/store/tournament.store";
 import toast from "react-hot-toast";
+import { Tournament, TournamentTeam } from "@/app/types/tournaments.types";
+import { getErrorMessage } from "@/app/utils/error-handler";
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  tournament: any;
+  tournament: Tournament;
 }
 
 export function AssignTeamsModal({ open, onClose, tournament }: Props) {
@@ -25,7 +27,7 @@ export function AssignTeamsModal({ open, onClose, tournament }: Props) {
 
   useEffect(() => {
     if (tournament?.teams) {
-      setSelected(tournament.teams.map((t: any) => t.id));
+      setSelected(tournament.teams.map((t) => t.id));
     }
   }, [tournament]);
 
@@ -38,8 +40,8 @@ export function AssignTeamsModal({ open, onClose, tournament }: Props) {
       });
       toast.success("Teams updated successfully");
       onClose();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to update teams");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

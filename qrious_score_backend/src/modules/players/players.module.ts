@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { PlayersController } from './players.controller';
 import { PlayersService } from './players.service';
 import { SequelizeModule } from '@nestjs/sequelize';
-import { Player } from './players.model';
+import { Player } from './models/players.model';
 
 import { AuthModule } from '../auth/auth.module';
 

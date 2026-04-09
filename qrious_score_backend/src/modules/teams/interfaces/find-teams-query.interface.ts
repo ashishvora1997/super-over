@@ -1,5 +1,5 @@
 import { WhereOptions } from 'sequelize';
-import { Team } from '../teams.model';
+import { Team } from '../models/teams.model';
 
 export interface FindTeamsQuery {
   search?: string;

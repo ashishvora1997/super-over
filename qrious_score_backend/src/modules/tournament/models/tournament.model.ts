@@ -6,7 +6,7 @@ import {
   BelongsToMany,
 } from 'sequelize-typescript';
 
-import { Team } from '../teams/teams.model';
+import { Team } from '../../teams/models/teams.model';
 import { TournamentTeam } from './tournament-team.model';
 
 @Table({ tableName: 'tournaments' })

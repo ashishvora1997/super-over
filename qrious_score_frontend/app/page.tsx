@@ -6,23 +6,16 @@ import { useAuthStore } from "@/app/store/auth.store";
 
 export default function HomePage() {
   const router = useRouter();
-  const { token, isInitialized, loadUserFromStorage } = useAuthStore();
-
-  useEffect(() => {
-    loadUserFromStorage();
-  }, []);
+  const { token, isInitialized } = useAuthStore();
 
   useEffect(() => {
     if (!isInitialized) return;
-
     if (token) {
-      router.replace("/dashboard");
+      window.location.href = "/dashboard";
     } else {
       router.replace("/login");
     }
-  }, [token, isInitialized]);
-
-  if (!isInitialized) return null;
+  }, [isInitialized, token, router]);
 
   return null;
 }

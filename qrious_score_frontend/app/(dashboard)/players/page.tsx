@@ -1,12 +1,17 @@
 "use client";
 
+import { RoleGuard } from "@/app/components/auth/role-guard";
 import { PlayerFormModal } from "@/app/components/players/player-form-modal";
 import { Button } from "@/app/components/ui/button";
 import { ConfirmModal } from "@/app/components/ui/modal/confirm-modal";
 import { Table } from "@/app/components/ui/Table";
 import { useDebounce } from "@/app/hooks/useDebounce";
+import { useAuthStore } from "@/app/store/auth.store";
 import { usePlayerStore } from "@/app/store/players.store";
+import { Player } from "@/app/types/players.types";
+import { Column } from "@/app/types/table.types";
 import { formatRole, toTitleCase } from "@/app/utils/format";
+import { hasRole } from "@/app/utils/permissions";
 import { Search, UserPlus, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -22,21 +27,24 @@ export default function PlayersPage() {
   } = usePlayerStore();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"create" | "edit">("create");
-  const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [searchInput, setSearchInput] = useState("");
   const [selectedRole, setSelectedRole] = useState("all");
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [playerToDelete, setPlayerToDelete] = useState<any>(null);
+
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
 
   const debouncedSearch = useDebounce(searchInput, 500);
 
+  const user = useAuthStore((state) => state.user);
+
   useEffect(() => {
-    fetchPlayers("", 1, "all");
+    fetchPlayers("", 1, selectedRole);
   }, []);
 
   useEffect(() => {
     fetchPlayers(debouncedSearch, 1, selectedRole);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, selectedRole]);
 
   const handleCreate = () => {
     setMode("create");
@@ -44,13 +52,13 @@ export default function PlayersPage() {
     setOpen(true);
   };
 
-  const handleEdit = (player: any) => {
+  const handleEdit = (player: Player) => {
     setMode("edit");
     setSelectedPlayer(player);
     setOpen(true);
   };
 
-  const handleDeleteClick = (player: any) => {
+  const handleDeleteClick = (player: Player) => {
     setPlayerToDelete(player);
     setDeleteOpen(true);
   };
@@ -61,12 +69,13 @@ export default function PlayersPage() {
     try {
       await deletePlayer(playerToDelete.id);
       setDeleteOpen(false);
-    } catch (err) {
+      setPlayerToDelete(null);
+    } catch (err: unknown) {
       console.error(err);
     }
   };
 
-  const columns = [
+  const baseColumns: Column<Player>[] = [
     {
       key: "name",
       title: "Player",
@@ -75,11 +84,7 @@ export default function PlayersPage() {
     {
       key: "role",
       title: "Role",
-      render: (p) => (
-        <span className="text-xs font-semibold px-2 py-1 rounded-lg border border-border text-muted">
-          {formatRole(p.role)}
-        </span>
-      ),
+      render: (p) => formatRole(p.role),
     },
     {
       key: "batting_style",
@@ -91,29 +96,39 @@ export default function PlayersPage() {
       title: "Bowling",
       render: (p) => toTitleCase(p.bowling_style),
     },
-    {
-      key: "actions",
-      align: "right",
-      title: "Actions",
-      render: (p) => (
-        <div className="flex gap-2 justify-end">
-          <button
-            onClick={() => handleEdit(p)}
-            className="p-2 rounded-lg hover:bg-primary/10 text-primary"
-          >
-            <Pencil size={16} />
-          </button>
-
-          <button
-            onClick={() => handleDeleteClick(p)}
-            className="p-2 rounded-lg hover:bg-destructive/10 text-destructive"
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-      ),
-    },
   ];
+
+  const canModify = hasRole(user?.role, ["admin", "scorer"]);
+
+  const columns: Column<Player>[] = canModify
+    ? [
+        ...baseColumns,
+        {
+          key: "actions",
+          title: "Actions",
+          align: "right",
+          render: (p) => (
+            <div className="flex gap-2 justify-end">
+              <button
+                className="p-2 rounded-lg hover:bg-primary/10 text-primary"
+                onClick={() => handleEdit(p)}
+              >
+                <Pencil size={16} />
+              </button>
+
+              {hasRole(user?.role, ["admin"]) && (
+                <button
+                  className="p-2 rounded-lg hover:bg-destructive/10 text-destructive"
+                  onClick={() => handleDeleteClick(p)}
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </div>
+          ),
+        },
+      ]
+    : baseColumns;
 
   const roles = [
     { label: "All", value: "all" },
@@ -124,7 +139,6 @@ export default function PlayersPage() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-foreground tracking-tight">
@@ -135,16 +149,17 @@ export default function PlayersPage() {
           </p>
         </div>
 
-        <Button
-          onClick={handleCreate}
-          className="inline-flex items-center gap-2"
-        >
-          <UserPlus size={16} />
-          Add Player
-        </Button>
+        <RoleGuard allowedRoles={["admin", "scorer"]}>
+          <Button
+            onClick={handleCreate}
+            className="inline-flex items-center gap-2"
+          >
+            <UserPlus size={16} />
+            Add Player
+          </Button>
+        </RoleGuard>
       </div>
 
-      {/* Search & Filter */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1 relative">
           <Search
@@ -155,13 +170,12 @@ export default function PlayersPage() {
           <input
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search by name, team or role..."
+            placeholder="Search by name..."
             className="w-full pl-10 pr-4 py-2.5 border border-border rounded-xl bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 text-sm placeholder:text-muted transition-all"
           />
         </div>
       </div>
 
-      {/* Role filter pills */}
       <div className="flex gap-2 flex-wrap">
         {roles.map((r) => (
           <button
@@ -181,7 +195,7 @@ export default function PlayersPage() {
         ))}
       </div>
 
-      <Table
+      <Table<Player>
         data={players}
         columns={columns}
         loading={loading}

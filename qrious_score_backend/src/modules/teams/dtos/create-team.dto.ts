@@ -1,8 +1,13 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, IsInt, MinLength } from 'class-validator';
 
 export class CreateTeamDto {
-  @IsString()
+  @IsString({ message: 'Team name is required' })
+  @MinLength(2)
   name!: string;
+
+  @IsString({ message: 'Short name is required' })
+  @MinLength(2)
+  short_name!: string;
 
   @IsOptional()
   @IsString()
@@ -10,5 +15,17 @@ export class CreateTeamDto {
 
   @IsOptional()
   @IsString()
-  logo?: string;
+  jersey_color?: string;
+
+  @IsOptional()
+  @IsString()
+  home_ground?: string;
+
+  @IsOptional()
+  @IsInt()
+  founded_year?: number;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
 }

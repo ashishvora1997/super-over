@@ -16,7 +16,6 @@ export function Modal({ open, onClose, children }: ModalProps) {
   useEffect(() => {
     if (open) {
       setVisible(true);
-      // Small delay so CSS transition triggers
       requestAnimationFrame(() =>
         requestAnimationFrame(() => setAnimate(true)),
       );
@@ -31,7 +30,6 @@ export function Modal({ open, onClose, children }: ModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col sm:items-center sm:justify-center">
-      {/* Overlay */}
       <div
         className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${
           animate ? "opacity-100" : "opacity-0"
@@ -39,7 +37,6 @@ export function Modal({ open, onClose, children }: ModalProps) {
         onClick={onClose}
       />
 
-      {/* Sheet — bottom on mobile, centered dialog on desktop */}
       <div
         className={`
           relative w-full bg-white flex flex-col overflow-hidden
@@ -55,7 +52,6 @@ export function Modal({ open, onClose, children }: ModalProps) {
           }
         `}
       >
-        {/* Mobile drag indicator */}
         <div className="sm:hidden flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>

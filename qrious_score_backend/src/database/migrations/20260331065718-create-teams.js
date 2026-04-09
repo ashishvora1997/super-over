@@ -15,19 +15,54 @@ module.exports = {
         allowNull: false,
       },
 
+      short_name: {
+        type: Sequelize.STRING,
+        allowNull: false,
+      },
+
       city: {
         type: Sequelize.STRING,
         allowNull: true,
       },
 
-      logo: {
+      jersey_color: {
         type: Sequelize.STRING,
         allowNull: true,
+      },
+
+      home_ground: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+
+      founded_year: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+      },
+
+      description: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+      },
+
+      captain_id: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        references: {
+          model: 'players',
+          key: 'id',
+        },
+        onDelete: 'SET NULL',
       },
 
       user_id: {
         type: Sequelize.INTEGER,
         allowNull: true,
+        references: {
+          model: 'users',
+          key: 'id',
+        },
+        onDelete: 'SET NULL',
       },
 
       createdAt: {
@@ -43,6 +78,6 @@ module.exports = {
   },
 
   async down(queryInterface) {
-    await queryInterface.dropTable('users');
+    await queryInterface.dropTable('teams');
   },
 };

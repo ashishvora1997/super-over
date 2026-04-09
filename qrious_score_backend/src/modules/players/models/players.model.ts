@@ -6,9 +6,9 @@ import {
   ForeignKey,
   BelongsToMany,
 } from 'sequelize-typescript';
-import { User } from '../users/user.model';
-import { Team } from '../teams/teams.model';
-import { TeamPlayer } from '../teams/team-player.model';
+import { User } from '../../users/models/user.model';
+import { Team } from '../../teams/models/teams.model';
+import { TeamPlayer } from '../../teams/models/team-player.model';
 
 @Table({
   tableName: 'players',
@@ -47,5 +47,5 @@ export class Player extends Model {
   declare user_id: number;
 
   @BelongsToMany(() => Team, () => TeamPlayer)
-  teams!: Team[];
+  declare teams: Team[];
 }

@@ -1,18 +1,24 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Op } from 'sequelize';
 import { CreateTeamDto } from './dtos/create-team.dto';
 import { successResponse } from 'src/common/utils/response.util';
 import { UpdateTeamDto } from './dtos/update-team.dto';
-import { Team } from './teams.model';
+import { Team } from './models/teams.model';
 import { AssignPlayersDto } from './dtos/assign-players.dto';
-import { TeamPlayer } from './team-player.model';
-import { Player } from '../players/players.model';
+import { TeamPlayer } from './models/team-player.model';
+import { Player } from '../players/models/players.model';
 import {
   FindTeamsQuery,
   TeamWhereOptions,
 } from './interfaces/find-teams-query.interface';
 import { SuccessResponse } from 'src/common/types/response.type';
+import { getPagination } from 'src/common/utils/pagination';
+import { SetCaptainDto } from './dtos/set-captain.dto';
 
 @Injectable()
 export class TeamsService {
@@ -22,9 +28,22 @@ export class TeamsService {
 
     @InjectModel(TeamPlayer)
     private teamPlayerModel: typeof TeamPlayer,
+
+    @InjectModel(Player)
+    private playerModel: typeof Player,
   ) {}
 
-  async create(data: CreateTeamDto) {
+  private async findTeamById(id: number): Promise<Team> {
+    const team = await this.teamModel.findByPk(id);
+
+    if (!team) {
+      throw new NotFoundException('Team not found');
+    }
+
+    return team;
+  }
+
+  async create(data: CreateTeamDto): Promise<SuccessResponse<Team>> {
     const team = await this.teamModel.create({
       ...data,
       name: data.name.trim(),
@@ -34,8 +53,9 @@ export class TeamsService {
   }
 
   async findAll(query: FindTeamsQuery = {}): Promise<SuccessResponse<Team[]>> {
-    const { search, page = 1, limit = 10 } = query;
-    const offset = (page - 1) * limit;
+    const { search } = query;
+
+    const { page, limit, offset } = getPagination(query.page, query.limit);
 
     const where: TeamWhereOptions = {};
 
@@ -52,6 +72,11 @@ export class TeamsService {
       include: [
         {
           model: Player,
+          as: 'captain',
+        },
+        {
+          model: Player,
+          as: 'players',
           through: { attributes: [] },
         },
       ],
@@ -65,7 +90,9 @@ export class TeamsService {
     });
   }
 
-  async findOne(id: number) {
+  async findOne(id: number): Promise<SuccessResponse<Team>> {
+    await this.findTeamById(id);
+
     const team = await this.teamModel.findByPk(id, {
       include: [
         {
@@ -75,51 +102,97 @@ export class TeamsService {
       ],
     });
 
-    if (!team) {
-      throw new NotFoundException('Team not found');
-    }
-
-    return successResponse('Team retrieved successfully', team);
+    return successResponse('Team retrieved successfully', team!);
   }
 
-  async update(id: number, data: UpdateTeamDto) {
-    const team = await this.teamModel.findByPk(id);
+  async update(
+    id: number,
+    data: UpdateTeamDto,
+  ): Promise<SuccessResponse<Team>> {
+    const team = await this.findTeamById(id);
 
-    if (!team) {
-      throw new NotFoundException('Team not found');
-    }
-
-    await team.update(data);
+    await team.update({
+      ...data,
+      name: data.name?.trim(),
+    });
 
     return successResponse('Team updated successfully', team);
   }
 
-  async delete(id: number) {
-    const team = await this.teamModel.findByPk(id);
-
-    if (!team) {
-      throw new NotFoundException('Team not found');
-    }
+  async delete(id: number): Promise<SuccessResponse<null>> {
+    const team = await this.findTeamById(id);
 
     await team.destroy();
 
     return successResponse('Team deleted successfully', null);
   }
 
-  async assignPlayers(data: AssignPlayersDto) {
+  async assignPlayers(data: AssignPlayersDto): Promise<SuccessResponse<null>> {
     const { team_id, player_ids } = data;
 
-    await this.teamPlayerModel.destroy({
-      where: { team_id },
+    await this.findTeamById(team_id);
+
+    const transaction = await this.teamModel.sequelize!.transaction();
+
+    try {
+      await this.teamPlayerModel.destroy({
+        where: { team_id },
+        transaction,
+      });
+
+      const payload = player_ids.map((player_id) => ({
+        team_id,
+        player_id,
+      }));
+
+      await this.teamPlayerModel.bulkCreate(payload, { transaction });
+
+      await transaction.commit();
+
+      return successResponse('Players assigned to team successfully', null);
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
+  async setCaptain(data: SetCaptainDto): Promise<SuccessResponse<Team>> {
+    const { team_id, player_id } = data;
+
+    const team = await this.teamModel.findByPk(team_id);
+
+    if (!team) {
+      throw new NotFoundException('Team not found');
+    }
+
+    const player = await this.playerModel.findByPk(player_id);
+
+    if (!player) {
+      throw new NotFoundException('Player not found');
+    }
+
+    const relation = await this.teamPlayerModel.findOne({
+      where: {
+        team_id,
+        player_id,
+      },
     });
 
-    const payload = player_ids.map((player_id) => ({
-      team_id,
-      player_id,
-    }));
+    if (!relation) {
+      throw new BadRequestException('Player is not part of this team');
+    }
 
-    await this.teamPlayerModel.bulkCreate(payload);
+    await team.update({ captain_id: player_id });
 
-    return successResponse('Players assigned to team successfully', null);
+    const updatedTeam = await this.teamModel.findByPk(team_id, {
+      include: [
+        {
+          model: Player,
+          as: 'captain',
+        },
+      ],
+    });
+
+    return successResponse('Captain assigned successfully', updatedTeam!);
   }
 }

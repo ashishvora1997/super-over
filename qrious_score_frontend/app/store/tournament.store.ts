@@ -41,7 +41,6 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
       const { pageSize } = get();
       const res = await getTournaments(search, page, pageSize);
 
-      // ✅ Fixed: use meta object from backend
       set({
         tournaments: res.data,
         total: res.meta.total,
@@ -72,7 +71,6 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
 
   assignTeams: async (payload) => {
     await assignTournamentTeams(payload);
-    // Refetch the current page so team counts update instantly
     const { page } = get();
     await get().fetchTournaments("", page);
   },

@@ -1,7 +1,7 @@
 import { Table, Column, Model, ForeignKey } from 'sequelize-typescript';
 
 import { Tournament } from './tournament.model';
-import { Team } from '../teams/teams.model';
+import { Team } from '../../teams/models/teams.model';
 
 @Table({ tableName: 'tournament_teams' })
 export class TournamentTeam extends Model {

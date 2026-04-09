@@ -13,12 +13,15 @@ import { CreateTeamDto } from './dtos/create-team.dto';
 import { UpdateTeamDto } from './dtos/update-team.dto';
 import { AssignPlayersDto } from './dtos/assign-players.dto';
 import { FindTeamsQuery } from './interfaces/find-teams-query.interface';
+import { SetCaptainDto } from './dtos/set-captain.dto';
+import { Roles } from 'src/common/decorators/roles.decorator';
 
 @Controller('teams')
 export class TeamsController {
   constructor(private readonly teamsService: TeamsService) {}
 
   @Post()
+  @Roles('scorer')
   create(@Body() data: CreateTeamDto) {
     return this.teamsService.create(data);
   }
@@ -34,17 +37,26 @@ export class TeamsController {
   }
 
   @Patch(':id')
+  @Roles('scorer')
   update(@Param('id') id: number, @Body() data: UpdateTeamDto) {
     return this.teamsService.update(Number(id), data);
   }
 
   @Delete(':id')
+  @Roles('admin')
   delete(@Param('id') id: number) {
     return this.teamsService.delete(Number(id));
   }
 
   @Post('assign-players')
+  @Roles('scorer')
   assignPlayers(@Body() data: AssignPlayersDto) {
     return this.teamsService.assignPlayers(data);
+  }
+
+  @Post('set-captain')
+  @Roles('admin', 'scorer')
+  setCap(@Body() data: SetCaptainDto) {
+    return this.teamsService.setCaptain(data);
   }
 }

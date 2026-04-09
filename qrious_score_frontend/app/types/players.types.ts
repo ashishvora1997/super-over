@@ -1,3 +1,5 @@
+import { SuccessResponse } from "./api.types";
+
 export interface Player {
   id: number;
   name: string;
@@ -23,7 +25,11 @@ export interface PlayerState {
     page?: number,
     role?: string,
   ) => Promise<void>;
-  createPlayer: (data: Partial<Player>) => Promise<any>;
-  updatePlayer: (id: number, data: Partial<Player>) => Promise<any>;
-  deletePlayer: (id: number) => Promise<any>;
+
+  createPlayer: (data: Partial<Player>) => Promise<SuccessResponse<Player>>;
+  updatePlayer: (
+    id: number,
+    data: Partial<Player>,
+  ) => Promise<SuccessResponse<Player>>;
+  deletePlayer: (id: number) => Promise<SuccessResponse<null>>;
 }
