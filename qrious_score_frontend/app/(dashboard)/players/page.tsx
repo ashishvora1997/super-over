@@ -160,7 +160,6 @@ export default function PlayersPage() {
         </RoleGuard>
       </div>
 
-      {/* Search & Filter */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1 relative">
           <Search

@@ -39,7 +39,6 @@ export default function ResetPasswordPage() {
     resolver: zodResolver(resetSchema),
   });
 
-  // 🚨 If no token → redirect
   useEffect(() => {
     if (!token) {
       toast.error("Invalid or expired reset link");
@@ -65,7 +64,6 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="w-full max-w-md mx-auto bg-white border border-border shadow-sm p-8 rounded-2xl">
-      {/* Title */}
       <h1 className="text-3xl font-semibold text-center mb-4">
         Reset Password
       </h1>
@@ -75,7 +73,6 @@ export default function ResetPasswordPage() {
       </p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Password */}
         <div>
           <label className="block text-sm font-medium text-muted mb-1.5">
             New Password
@@ -88,7 +85,6 @@ export default function ResetPasswordPage() {
           />
         </div>
 
-        {/* Confirm Password */}
         <div>
           <label className="block text-sm font-medium text-muted mb-1.5">
             Confirm Password
@@ -101,7 +97,6 @@ export default function ResetPasswordPage() {
           />
         </div>
 
-        {/* Button */}
         <Button type="submit" disabled={isSubmitting} className="w-full">
           {isSubmitting ? "Resetting..." : "Reset Password"}
         </Button>

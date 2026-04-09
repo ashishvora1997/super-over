@@ -19,7 +19,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-foreground">
           Welcome back {user?.name} 👋
@@ -27,7 +26,6 @@ export default function DashboardPage() {
         <p className="text-sm text-muted">Here's what's happening today</p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-4">
         <StatCard
           title="Players"
@@ -60,7 +58,6 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Recent Matches */}
       <div className="bg-white border border-border rounded-2xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h3 className="text-sm font-semibold text-foreground">

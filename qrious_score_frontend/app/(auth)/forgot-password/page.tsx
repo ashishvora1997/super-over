@@ -42,7 +42,6 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="w-full max-w-md mx-auto bg-white border border-border shadow-sm p-8 rounded-2xl">
-      {/* Title */}
       <h1 className="text-3xl font-semibold text-center mb-4">
         Forgot Password
       </h1>
@@ -52,7 +51,6 @@ export default function ForgotPasswordPage() {
       </p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Email */}
         <div>
           <label className="block text-sm font-medium text-muted mb-1.5">
             Email
@@ -65,13 +63,11 @@ export default function ForgotPasswordPage() {
           />
         </div>
 
-        {/* Button */}
         <Button type="submit" disabled={isSubmitting} className="w-full">
           {isSubmitting ? "Sending..." : "Send Reset Link"}
         </Button>
       </form>
 
-      {/* Footer */}
       <p className="text-sm text-center text-muted mt-8">
         Remember your password?{" "}
         <Link

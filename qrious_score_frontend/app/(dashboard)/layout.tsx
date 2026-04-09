@@ -44,10 +44,16 @@ const navItems = [
     roles: ["admin", "scorer", "viewer"],
   },
   {
+    name: "Tournaments",
+    href: "/tournaments",
+    icon: Trophy,
+    roles: ["admin", "scorer", "viewer"],
+  },
+  {
     name: "Users",
     href: "/users",
     icon: Users,
-    roles: ["admin"], // 🔥 ONLY ADMIN
+    roles: ["admin"],
   },
 ];
 
@@ -66,9 +72,7 @@ export default function DashboardLayout({
   return (
     <ProtectedRoute>
       <div className="h-[100dvh] flex flex-col bg-background">
-        {/* Topbar — logomark only, no text duplicate */}
         <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 z-10 shadow-sm">
-          {/* Left: hamburger (mobile) + Q logomark */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => setOpen(true)}
@@ -77,7 +81,6 @@ export default function DashboardLayout({
               <Menu size={20} />
             </button>
 
-            {/* On mobile show full brand; on desktop just the mark (sidebar has full name) */}
             <div className="flex items-center gap-2 md:hidden">
               <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center text-white font-bold text-base shadow-sm shadow-primary/30">
                 Q
@@ -87,13 +90,11 @@ export default function DashboardLayout({
               </span>
             </div>
 
-            {/* Desktop: just the Q mark as a breadcrumb anchor */}
             <div className="hidden md:flex w-8 h-8 bg-primary rounded-xl items-center justify-center text-white font-bold text-base shadow-sm shadow-primary/30">
               Q
             </div>
           </div>
 
-          {/* Right: notifications + avatar */}
           <div className="flex items-center gap-2">
             <button className="relative p-2 rounded-xl text-muted hover:bg-gray-100 transition-colors">
               <Bell size={18} />
@@ -116,7 +117,6 @@ export default function DashboardLayout({
           </div>
         </header>
 
-        {/* Mobile Drawer */}
         {open && (
           <div className="fixed inset-0 z-50 flex">
             <div
@@ -124,7 +124,6 @@ export default function DashboardLayout({
               onClick={() => setOpen(false)}
             />
             <div className="w-72 bg-white flex flex-col shadow-2xl">
-              {/* Drawer header */}
               <div className="flex items-center justify-between px-6 py-5 border-b border-border">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center text-white font-bold shadow-sm shadow-primary/30">
@@ -189,9 +188,7 @@ export default function DashboardLayout({
         )}
 
         <div className="flex flex-1 overflow-hidden">
-          {/* Desktop Sidebar */}
           <aside className="hidden md:flex w-64 bg-white border-r border-border flex-col">
-            {/* Brand */}
             <div className="px-6 py-6 border-b border-border">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center text-white font-bold shadow-sm shadow-primary/30">
@@ -206,7 +203,6 @@ export default function DashboardLayout({
               </div>
             </div>
 
-            {/* Nav */}
             <nav className="flex-1 px-3 py-4 space-y-0.5">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted px-3 mb-3">
                 Main Menu
@@ -247,7 +243,6 @@ export default function DashboardLayout({
                 })}
             </nav>
 
-            {/* Footer */}
             <div className="px-3 py-4 border-t border-border">
               <button
                 onClick={() => {
@@ -264,13 +259,11 @@ export default function DashboardLayout({
             </div>
           </aside>
 
-          {/* Main Content */}
           <main className="flex-1 overflow-y-auto bg-background p-4 md:p-8">
             {children}
           </main>
         </div>
 
-        {/* Mobile Bottom Nav */}
         <nav className="md:hidden h-16 bg-white border-t border-border flex justify-around items-center px-1 safe-area-pb">
           {navItems
             .filter((item) => item.roles.includes(user?.role || "viewer"))

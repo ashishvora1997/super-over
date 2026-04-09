@@ -44,6 +44,5 @@ export interface TeamState {
   ) => Promise<SuccessResponse<Team>>;
   deleteTeam: (id: number) => Promise<SuccessResponse<null>>;
 
-  // setCaptain: (team_id: number, player_id: number) => Promise<void>;
   updateCaptainInStore: (team_id: number, player_id: number) => void;
 }

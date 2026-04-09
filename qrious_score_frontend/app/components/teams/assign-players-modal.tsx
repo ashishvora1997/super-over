@@ -31,7 +31,7 @@ export function AssignPlayersModal({
 
   const [selected, setSelected] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
-  const [settingCaptain, setSettingCaptain] = useState<number | null>(null); // holds player_id being set
+  const [settingCaptain, setSettingCaptain] = useState<number | null>(null);
   const [currentCaptainId, setCurrentCaptainId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -83,7 +83,6 @@ export function AssignPlayersModal({
     }
   };
 
-  // Only players who are already assigned (saved) can be set as captain
   const assignedPlayers = players.filter((p) => selected.includes(p.id));
 
   const options = players.map((p) => ({ label: p.name, value: p.id }));
@@ -93,7 +92,6 @@ export function AssignPlayersModal({
       <ModalHeader title={`Manage Squad — ${team?.name}`} onClose={onClose} />
 
       <ModalBody>
-        {/* Section 1 — Assign players */}
         <div>
           <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
             Squad Players
@@ -131,7 +129,6 @@ export function AssignPlayersModal({
                   </option>
                 ))}
               </select>
-              {/* Chevron */}
               <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                   <path
@@ -145,7 +142,6 @@ export function AssignPlayersModal({
               </div>
             </div>
 
-            {/* Show current captain as a small confirmation pill */}
             {currentCaptainId && (
               <div className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
                 <Crown size={10} />

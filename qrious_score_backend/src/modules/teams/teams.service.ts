@@ -33,7 +33,6 @@ export class TeamsService {
     private playerModel: typeof Player,
   ) {}
 
-  // ✅ Reusable helper
   private async findTeamById(id: number): Promise<Team> {
     const team = await this.teamModel.findByPk(id);
 
@@ -73,11 +72,11 @@ export class TeamsService {
       include: [
         {
           model: Player,
-          as: 'captain', // for the single captain
+          as: 'captain',
         },
         {
           model: Player,
-          as: 'players', // for the many-to-many squad
+          as: 'players',
           through: { attributes: [] },
         },
       ],
