@@ -17,4 +17,5 @@ export interface TableProps<T> {
   total?: number;
   pageSize?: number;
   onPageChange?: (page: number) => void;
+  onRowClick?: (row: T) => void;
 }

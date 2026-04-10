@@ -3,15 +3,16 @@
 import { useEffect, useState } from "react";
 import { FormModal } from "@/app/components/ui/modal/form-modal";
 import { useTournamentStore } from "@/app/store/tournament.store";
-import { TournamentStatus } from "@/app/types/tournaments.types";
+import { Tournament, TournamentStatus } from "@/app/types/tournaments.types";
 import toast from "react-hot-toast";
 import { Calendar, MapPin, Trophy } from "lucide-react";
+import { getErrorMessage } from "@/app/utils/error-handler";
 
 interface Props {
   open: boolean;
   onClose: () => void;
   mode: "create" | "edit";
-  tournament?: any;
+  tournament?: Tournament | null;
 }
 
 const STATUS_OPTIONS: { value: TournamentStatus; label: string }[] = [
@@ -38,7 +39,6 @@ export function TournamentFormModal({
   const [form, setForm] = useState(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
 
-  // Prefill on edit
   useEffect(() => {
     if (mode === "edit" && tournament) {
       setForm({
@@ -69,12 +69,13 @@ export function TournamentFormModal({
         await createTournament(form);
         toast.success("Tournament created!");
       } else {
+        if (!tournament) return;
         await updateTournament({ id: tournament.id, ...form });
         toast.success("Tournament updated!");
       }
       onClose();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Something went wrong");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -89,7 +90,6 @@ export function TournamentFormModal({
       submitText={mode === "create" ? "Create Tournament" : "Save Changes"}
       loading={loading}
     >
-      {/* Name */}
       <div className="space-y-1.5">
         <label className="text-xs font-semibold text-muted uppercase tracking-wider">
           Tournament Name
@@ -108,7 +108,6 @@ export function TournamentFormModal({
         </div>
       </div>
 
-      {/* Location */}
       <div className="space-y-1.5">
         <label className="text-xs font-semibold text-muted uppercase tracking-wider">
           Location
@@ -127,7 +126,6 @@ export function TournamentFormModal({
         </div>
       </div>
 
-      {/* Dates — side by side */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-muted uppercase tracking-wider">
@@ -167,7 +165,6 @@ export function TournamentFormModal({
         </div>
       </div>
 
-      {/* Status */}
       <div className="space-y-1.5">
         <label className="text-xs font-semibold text-muted uppercase tracking-wider">
           Status

@@ -16,12 +16,14 @@ import { Table } from "@/app/components/ui/Table";
 import { ConfirmModal } from "@/app/components/ui/modal/confirm-modal";
 import { TournamentFormModal } from "@/app/components/tournaments/tournament-form-modal";
 import { AssignTeamsModal } from "@/app/components/tournaments/assign-teams-modal";
+import { RoleGuard } from "@/app/components/auth/role-guard";
 
 import { useTournamentStore } from "@/app/store/tournament.store";
+import { useAuthStore } from "@/app/store/auth.store";
 import { useDebounce } from "@/app/hooks/useDebounce";
-import { TournamentStatus } from "@/app/types/tournaments.types";
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
+import { hasRole } from "@/app/utils/permissions";
+import { Tournament, TournamentStatus } from "@/app/types/tournaments.types";
+import { Column } from "@/app/types/table.types";
 
 const STATUS_CONFIG: Record<
   TournamentStatus,
@@ -104,8 +106,6 @@ function TournamentAvatar({
   );
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
-
 export default function TournamentsPage() {
   const {
     tournaments,
@@ -117,15 +117,18 @@ export default function TournamentsPage() {
     loading,
   } = useTournamentStore();
 
+  const user = useAuthStore((state) => state.user);
+
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"create" | "edit">("create");
-  const [selectedTournament, setSelectedTournament] = useState<any>(null);
+  const [selectedTournament, setSelectedTournament] =
+    useState<Tournament | null>(null);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [toDelete, setToDelete] = useState<any>(null);
+  const [toDelete, setToDelete] = useState<Tournament | null>(null);
 
   const [assignOpen, setAssignOpen] = useState(false);
-  const [toAssign, setToAssign] = useState<any>(null);
+  const [toAssign, setToAssign] = useState<Tournament | null>(null);
 
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebounce(searchInput, 500);
@@ -139,16 +142,22 @@ export default function TournamentsPage() {
   }, [debouncedSearch]);
 
   const handleCreate = () => {
+    if (!hasRole(user?.role, ["admin", "scorer"])) return;
+
     setMode("create");
     setSelectedTournament(null);
     setOpen(true);
   };
-  const handleEdit = (t: any) => {
+  const handleEdit = (t: Tournament) => {
+    if (!hasRole(user?.role, ["admin", "scorer"])) return;
+
     setMode("edit");
     setSelectedTournament(t);
     setOpen(true);
   };
-  const handleDeleteClick = (t: any) => {
+  const handleDeleteClick = (t: Tournament) => {
+    if (!hasRole(user?.role, ["admin", "scorer"])) return;
+
     setToDelete(t);
     setDeleteOpen(true);
   };
@@ -157,17 +166,18 @@ export default function TournamentsPage() {
     await deleteTournament(toDelete.id);
     setDeleteOpen(false);
   };
-  const handleManageTeams = (t: any) => {
+  const handleManageTeams = (t: Tournament) => {
+    if (!hasRole(user?.role, ["scorer"])) return;
+
     setToAssign(t);
     setAssignOpen(true);
   };
 
-  // ── Desktop columns ──────────────────────────────────────────────────────
-  const columns = [
+  const baseColumns: Column<Tournament>[] = [
     {
       key: "name",
       title: "Tournament",
-      render: (t: any) => (
+      render: (t) => (
         <div className="flex items-center gap-3">
           <TournamentAvatar id={t.id} size="sm" />
           <div>
@@ -185,7 +195,7 @@ export default function TournamentsPage() {
     {
       key: "dates",
       title: "Dates",
-      render: (t: any) => (
+      render: (t) => (
         <div className="flex items-center gap-1.5 text-sm text-muted">
           <CalendarDays size={13} className="flex-shrink-0" />
           <span>
@@ -197,13 +207,13 @@ export default function TournamentsPage() {
     {
       key: "status",
       title: "Status",
-      render: (t: any) => <StatusBadge status={t.status} />,
+      render: (t) => <StatusBadge status={t.status} />,
     },
     {
       key: "teams",
       title: "Teams",
-      render: (t: any) => {
-        const count = t.teams?.length || 0;
+      render: (t) => {
+        const count = t.teams?.length ?? 0;
         return (
           <span
             className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${
@@ -218,40 +228,50 @@ export default function TournamentsPage() {
         );
       },
     },
-    {
-      key: "actions",
-      title: "Actions",
-      align: "right",
-      render: (t: any) => (
-        <div className="flex gap-1.5 justify-end">
-          <button
-            onClick={() => handleManageTeams(t)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-          >
-            <Users size={12} />
-            Teams
-          </button>
-          <button
-            onClick={() => handleEdit(t)}
-            className="p-1.5 rounded-lg hover:bg-primary/10 text-muted hover:text-primary transition-colors"
-          >
-            <Pencil size={14} />
-          </button>
-          <button
-            onClick={() => handleDeleteClick(t)}
-            className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted hover:text-destructive transition-colors"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
-      ),
-    },
   ];
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  const canModify = hasRole(user?.role, ["admin", "scorer"]);
+
+  const columns: Column<Tournament>[] = canModify
+    ? [
+        ...baseColumns,
+        {
+          key: "actions",
+          title: "Actions",
+          align: "right",
+          render: (t) => (
+            <div className="flex gap-1.5 justify-end">
+              <RoleGuard allowedRoles={["scorer"]}>
+                <button
+                  onClick={() => handleManageTeams(t)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                >
+                  <Users size={12} />
+                  Teams
+                </button>
+              </RoleGuard>
+              <button
+                onClick={() => handleEdit(t)}
+                className="p-1.5 rounded-lg hover:bg-primary/10 text-muted hover:text-primary transition-colors"
+              >
+                <Pencil size={14} />
+              </button>
+              <RoleGuard allowedRoles={["admin"]}>
+                <button
+                  onClick={() => handleDeleteClick(t)}
+                  className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted hover:text-destructive transition-colors"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </RoleGuard>
+            </div>
+          ),
+        },
+      ]
+    : baseColumns;
+
   return (
     <div className="space-y-5 max-w-6xl mx-auto">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-foreground tracking-tight">
@@ -263,17 +283,19 @@ export default function TournamentsPage() {
               : "Manage your cricket tournaments"}
           </p>
         </div>
-        <button
-          onClick={handleCreate}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-semibold rounded-xl shadow-md shadow-primary/25 transition-all active:scale-95"
-        >
-          <Plus size={16} />
-          <span className="hidden sm:inline">Add Tournament</span>
-          <span className="sm:hidden">Add</span>
-        </button>
+
+        <RoleGuard allowedRoles={["admin", "scorer"]}>
+          <button
+            onClick={handleCreate}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-semibold rounded-xl shadow-md shadow-primary/25 transition-all active:scale-95"
+          >
+            <Plus size={16} />
+            <span className="hidden sm:inline">Add Tournament</span>
+            <span className="sm:hidden">Add</span>
+          </button>
+        </RoleGuard>
       </div>
 
-      {/* Search */}
       <div className="relative">
         <Search
           size={15}
@@ -287,7 +309,6 @@ export default function TournamentsPage() {
         />
       </div>
 
-      {/* ── MOBILE VIEW ── */}
       <div className="sm:hidden space-y-3">
         {loading ? (
           Array.from({ length: 3 }).map((_, i) => (
@@ -315,26 +336,26 @@ export default function TournamentsPage() {
             <p className="text-sm text-muted mt-1">
               Create your first tournament to get started
             </p>
-            <button
-              onClick={handleCreate}
-              className="mt-4 px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl"
-            >
-              Add Tournament
-            </button>
+            <RoleGuard allowedRoles={["admin", "scorer"]}>
+              <button
+                onClick={handleCreate}
+                className="mt-4 px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl"
+              >
+                Add Tournament
+              </button>
+            </RoleGuard>
           </div>
         ) : (
-          tournaments.map((tournament: any) => {
+          tournaments.map((tournament: Tournament) => {
             const gradient = getTournamentColor(tournament.id);
-            const teamCount = tournament.teams?.length || 0;
+            const teamCount = tournament.teams?.length ?? 0;
             const status: TournamentStatus = tournament.status ?? "upcoming";
-            const cfg = STATUS_CONFIG[status];
 
             return (
               <div
                 key={tournament.id}
                 className="bg-white border border-border rounded-2xl overflow-hidden shadow-sm"
               >
-                {/* Accent stripe */}
                 <div className={`h-1 w-full bg-gradient-to-r ${gradient}`} />
 
                 <div className="p-4">
@@ -345,7 +366,6 @@ export default function TournamentsPage() {
                       <h3 className="font-bold text-foreground text-base leading-tight truncate">
                         {tournament.name}
                       </h3>
-
                       {tournament.location && (
                         <div className="flex items-center gap-1 text-muted text-sm mt-0.5">
                           <MapPin size={12} />
@@ -354,10 +374,8 @@ export default function TournamentsPage() {
                           </span>
                         </div>
                       )}
-
                       <div className="flex items-center gap-2 mt-2 flex-wrap">
                         <StatusBadge status={status} />
-
                         <span
                           className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${
                             teamCount > 0
@@ -371,24 +389,26 @@ export default function TournamentsPage() {
                       </div>
                     </div>
 
-                    {/* Icon actions */}
-                    <div className="flex gap-1 flex-shrink-0">
-                      <button
-                        onClick={() => handleEdit(tournament)}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-50 hover:bg-primary/10 text-muted hover:text-primary transition-colors"
-                      >
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClick(tournament)}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-50 hover:bg-destructive/10 text-muted hover:text-destructive transition-colors"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                    {canModify && (
+                      <div className="flex gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => handleEdit(tournament)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-50 hover:bg-primary/10 text-muted hover:text-primary transition-colors"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        {hasRole(user?.role, ["admin"]) && (
+                          <button
+                            onClick={() => handleDeleteClick(tournament)}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-50 hover:bg-destructive/10 text-muted hover:text-destructive transition-colors"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Date range row */}
                   <div className="flex items-center gap-1.5 text-xs text-muted mt-3 px-0.5">
                     <CalendarDays size={12} />
                     <span>
@@ -397,21 +417,21 @@ export default function TournamentsPage() {
                     </span>
                   </div>
 
-                  {/* Manage Teams CTA */}
-                  <button
-                    onClick={() => handleManageTeams(tournament)}
-                    className={`mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r ${gradient} shadow-sm active:scale-[0.98] transition-transform`}
-                  >
-                    <Users size={14} />
-                    Manage Teams
-                  </button>
+                  <RoleGuard allowedRoles={["admin", "scorer"]}>
+                    <button
+                      onClick={() => handleManageTeams(tournament)}
+                      className={`mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r ${gradient} shadow-sm active:scale-[0.98] transition-transform`}
+                    >
+                      <Users size={14} />
+                      Manage Teams
+                    </button>
+                  </RoleGuard>
                 </div>
               </div>
             );
           })
         )}
 
-        {/* Mobile pagination */}
         {!loading && tournaments.length > 0 && total > pageSize && (
           <div className="flex items-center justify-between pt-1 px-1">
             <span className="text-xs text-muted">
@@ -438,9 +458,8 @@ export default function TournamentsPage() {
         )}
       </div>
 
-      {/* ── DESKTOP VIEW ── */}
       <div className="hidden sm:block">
-        <Table
+        <Table<Tournament>
           data={tournaments}
           columns={columns}
           loading={loading}
@@ -452,7 +471,6 @@ export default function TournamentsPage() {
         />
       </div>
 
-      {/* Modals */}
       <TournamentFormModal
         open={open}
         onClose={() => setOpen(false)}
@@ -469,11 +487,13 @@ export default function TournamentsPage() {
         confirmText="Delete"
       />
 
-      <AssignTeamsModal
-        open={assignOpen}
-        onClose={() => setAssignOpen(false)}
-        tournament={toAssign}
-      />
+      {toAssign && (
+        <AssignTeamsModal
+          open={assignOpen}
+          onClose={() => setAssignOpen(false)}
+          tournament={toAssign}
+        />
+      )}
     </div>
   );
 }

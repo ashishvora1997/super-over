@@ -1,0 +1,51 @@
+import {
+  Table,
+  Column,
+  Model,
+  DataType,
+  ForeignKey,
+  BelongsToMany,
+  BelongsTo,
+} from 'sequelize-typescript';
+
+import { User } from 'src/modules/users/models/user.model';
+import { Player } from 'src/modules/players/models/players.model';
+import { TeamPlayer } from './team-player.model';
+
+@Table({ tableName: 'teams' })
+export class Team extends Model {
+  @Column({ allowNull: false })
+  declare name: string;
+
+  @Column({ allowNull: false })
+  declare short_name: string;
+
+  @Column
+  declare city?: string;
+
+  @Column
+  declare jersey_color?: string;
+
+  @Column
+  declare home_ground?: string;
+
+  @Column(DataType.INTEGER)
+  declare founded_year?: number;
+
+  @Column(DataType.TEXT)
+  declare description?: string;
+
+  @ForeignKey(() => Player)
+  @Column(DataType.INTEGER)
+  declare captain_id?: number;
+
+  @BelongsTo(() => Player, 'captain_id')
+  declare captain?: Player;
+
+  @ForeignKey(() => User)
+  @Column(DataType.INTEGER)
+  declare user_id?: number;
+
+  @BelongsToMany(() => Player, () => TeamPlayer)
+  declare players: Player[];
+}

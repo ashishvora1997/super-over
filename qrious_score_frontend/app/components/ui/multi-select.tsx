@@ -35,7 +35,6 @@ export function MultiSelect({
 
   return (
     <div className="border border-border rounded-xl bg-white overflow-hidden">
-      {/* Stats bar */}
       <div className="flex items-center justify-between px-3 py-2.5 bg-gray-50 border-b border-border">
         <span className="text-xs font-medium text-foreground">
           {value.length > 0 ? (
@@ -57,7 +56,6 @@ export function MultiSelect({
         )}
       </div>
 
-      {/* Search */}
       <div className="relative border-b border-border">
         <Search
           size={13}
@@ -71,7 +69,6 @@ export function MultiSelect({
         />
       </div>
 
-      {/* Options list */}
       <div className="max-h-56 overflow-y-auto divide-y divide-border/50">
         {filtered.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted">
@@ -89,7 +86,6 @@ export function MultiSelect({
                   isSelected ? "bg-primary/5" : "hover:bg-gray-50"
                 }`}
               >
-                {/* Custom checkbox */}
                 <div
                   className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
                     isSelected
@@ -102,7 +98,6 @@ export function MultiSelect({
                   )}
                 </div>
 
-                {/* Avatar */}
                 <div
                   className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0 ${
                     isSelected ? "bg-primary" : "bg-gray-400"

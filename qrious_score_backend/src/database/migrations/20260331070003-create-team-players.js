@@ -47,7 +47,6 @@ module.exports = {
       name: 'unique_team_player',
     });
 
-    // ✅ INDEXES
     await queryInterface.addIndex('team_players', ['team_id']);
     await queryInterface.addIndex('team_players', ['player_id']);
   },

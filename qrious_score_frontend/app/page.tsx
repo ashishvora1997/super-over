@@ -10,15 +10,12 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!isInitialized) return;
-
     if (token) {
-      router.replace("/dashboard");
+      window.location.href = "/dashboard";
     } else {
       router.replace("/login");
     }
-  }, [token, isInitialized]);
-
-  if (!isInitialized) return null;
+  }, [isInitialized, token, router]);
 
   return null;
 }

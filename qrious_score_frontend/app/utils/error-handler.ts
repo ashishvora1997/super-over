@@ -1,16 +1,27 @@
-export const getErrorMessage = (error: any): string => {
-  const data = error?.response?.data;
+import { AxiosError } from "axios";
 
-  if (!data) return "Something went wrong";
+interface ApiErrorResponse {
+  message?: string | string[];
+  errors?: Record<string, string>;
+}
 
-  // Case 1: simple message (login errors etc.)
-  if (typeof data.message === "string") {
-    return data.message;
-  }
+export const getErrorMessage = (error: unknown): string => {
+  if (error instanceof AxiosError) {
+    const data = error.response?.data as ApiErrorResponse | undefined;
 
-  // Case 2: validation errors object
-  if (data.errors && typeof data.errors === "object") {
-    return Object.values(data.errors)[0] as string;
+    if (!data) return "Something went wrong";
+
+    if (typeof data.message === "string") {
+      return data.message;
+    }
+
+    if (Array.isArray(data.message)) {
+      return data.message[0];
+    }
+
+    if (data.errors && typeof data.errors === "object") {
+      return Object.values(data.errors)[0];
+    }
   }
 
   return "Something went wrong";

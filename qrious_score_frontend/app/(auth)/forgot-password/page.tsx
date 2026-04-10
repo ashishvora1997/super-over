@@ -7,6 +7,8 @@ import { forgotPassword } from "@/app/services/auth.service";
 import toast from "react-hot-toast";
 import { getErrorMessage } from "@/app/utils/error-handler";
 import Link from "next/link";
+import { Input } from "@/app/components/ui/input";
+import { Button } from "@/app/components/ui/button";
 
 const forgotSchema = z.object({
   email: z
@@ -31,16 +33,15 @@ export default function ForgotPasswordPage() {
     try {
       const res = await forgotPassword(data);
 
-      toast.success("Check your email for reset link 📩");
+      toast.success(res.message);
       reset();
-    } catch (error) {
+    } catch (error: unknown) {
       toast.error(getErrorMessage(error));
     }
   };
 
   return (
     <div className="w-full max-w-md mx-auto bg-white border border-border shadow-sm p-8 rounded-2xl">
-      {/* Title */}
       <h1 className="text-3xl font-semibold text-center mb-4">
         Forgot Password
       </h1>
@@ -50,39 +51,23 @@ export default function ForgotPasswordPage() {
       </p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Email */}
         <div>
           <label className="block text-sm font-medium text-muted mb-1.5">
             Email
           </label>
-          <input
+          <Input
             {...register("email")}
             type="email"
-            className={`w-full px-4 py-3 bg-white border rounded-2xl focus:outline-none focus:ring-2 transition-all ${
-              errors.email
-                ? "border-destructive focus:ring-destructive"
-                : "border-border focus:ring-primary"
-            }`}
             placeholder="Enter your email"
+            error={errors.email?.message}
           />
-          {errors.email && (
-            <p className="text-destructive text-sm mt-1.5 font-medium">
-              {errors.email.message}
-            </p>
-          )}
         </div>
 
-        {/* Button */}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full bg-primary hover:bg-primary-dark active:scale-[0.98] text-white py-3.5 rounded-2xl font-semibold transition-all disabled:opacity-70"
-        >
+        <Button type="submit" disabled={isSubmitting} className="w-full">
           {isSubmitting ? "Sending..." : "Send Reset Link"}
-        </button>
+        </Button>
       </form>
 
-      {/* Footer */}
       <p className="text-sm text-center text-muted mt-8">
         Remember your password?{" "}
         <Link

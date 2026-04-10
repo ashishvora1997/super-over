@@ -4,29 +4,31 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
-import { Op } from 'sequelize';
+import { Op, WhereOptions } from 'sequelize';
 
-import { Tournament } from './tournament.model';
-import { TournamentTeam } from './tournament-team.model';
-import { Team } from '../teams/teams.model';
+import { Tournament } from './models/tournament.model';
+import { TournamentTeam } from './models/tournament-team.model';
+import { Team } from '../teams/models/teams.model';
 
 import { CreateTournamentDto } from './dtos/create-tournament.dto';
 import { UpdateTournamentDto } from './dtos/update-tournament.dto';
 import { AssignTeamsDto } from './dtos/assign-teams.dto';
 
 import { successResponse } from 'src/common/utils/response.util';
+import { SuccessResponse } from 'src/common/types/response.type';
 
 @Injectable()
 export class TournamentService {
   constructor(
     @InjectModel(Tournament)
-    private tournamentModel: typeof Tournament,
+    private readonly tournamentModel: typeof Tournament,
 
     @InjectModel(TournamentTeam)
-    private tournamentTeamModel: typeof TournamentTeam,
+    private readonly tournamentTeamModel: typeof TournamentTeam,
   ) {}
-
-  async create(data: CreateTournamentDto) {
+  async create(
+    data: CreateTournamentDto,
+  ): Promise<SuccessResponse<Tournament>> {
     const { start_date, end_date } = data;
 
     if (start_date && end_date && start_date > end_date) {
@@ -34,24 +36,14 @@ export class TournamentService {
     }
 
     if (start_date && end_date) {
-      const overlappingTournament = await this.tournamentModel.findOne({
+      const overlapping = await this.tournamentModel.findOne({
         where: {
-          [Op.and]: [
-            {
-              start_date: {
-                [Op.lte]: end_date,
-              },
-            },
-            {
-              end_date: {
-                [Op.gte]: start_date,
-              },
-            },
-          ],
+          start_date: { [Op.lte]: end_date },
+          end_date: { [Op.gte]: start_date },
         },
       });
 
-      if (overlappingTournament) {
+      if (overlapping) {
         throw new BadRequestException(
           'Tournament dates overlap with an existing tournament',
         );
@@ -61,16 +53,20 @@ export class TournamentService {
     const tournament = await this.tournamentModel.create({
       ...data,
       name: data.name.trim(),
-      status: data.status || 'upcoming',
+      status: data.status ?? 'upcoming',
     });
 
     return successResponse('Tournament created successfully', tournament);
   }
 
-  async findAll(search?: string, page = 1, limit = 10) {
+  async findAll(
+    search?: string,
+    page = 1,
+    limit = 10,
+  ): Promise<SuccessResponse<Tournament[]>> {
     const offset = (page - 1) * limit;
 
-    const where: any = {};
+    const where: WhereOptions<Tournament> = {};
 
     if (search) {
       where.name = {
@@ -98,7 +94,7 @@ export class TournamentService {
     });
   }
 
-  async findOne(id: number) {
+  async findOne(id: number): Promise<SuccessResponse<Tournament>> {
     const tournament = await this.tournamentModel.findByPk(id, {
       include: [
         {
@@ -115,7 +111,10 @@ export class TournamentService {
     return successResponse('Tournament retrieved successfully', tournament);
   }
 
-  async update(id: number, data: UpdateTournamentDto) {
+  async update(
+    id: number,
+    data: UpdateTournamentDto,
+  ): Promise<SuccessResponse<Tournament>> {
     const tournament = await this.tournamentModel.findByPk(id);
 
     if (!tournament) {
@@ -123,25 +122,19 @@ export class TournamentService {
     }
 
     if (data.start_date && data.end_date) {
-      const overlappingTournament = await this.tournamentModel.findOne({
+      if (data.start_date > data.end_date) {
+        throw new BadRequestException('Start date cannot be after end date');
+      }
+
+      const overlapping = await this.tournamentModel.findOne({
         where: {
-          id: { [Op.ne]: id }, // exclude current
-          [Op.and]: [
-            {
-              start_date: {
-                [Op.lte]: data.end_date,
-              },
-            },
-            {
-              end_date: {
-                [Op.gte]: data.start_date,
-              },
-            },
-          ],
+          id: { [Op.ne]: id },
+          start_date: { [Op.lte]: data.end_date },
+          end_date: { [Op.gte]: data.start_date },
         },
       });
 
-      if (overlappingTournament) {
+      if (overlapping) {
         throw new BadRequestException(
           'Updated dates overlap with another tournament',
         );
@@ -153,7 +146,7 @@ export class TournamentService {
     return successResponse('Tournament updated successfully', tournament);
   }
 
-  async delete(id: number) {
+  async delete(id: number): Promise<SuccessResponse<null>> {
     const tournament = await this.tournamentModel.findByPk(id);
 
     if (!tournament) {
@@ -165,17 +158,23 @@ export class TournamentService {
     return successResponse('Tournament deleted successfully', null);
   }
 
-  async assignTeams(data: AssignTeamsDto) {
+  async assignTeams(data: AssignTeamsDto): Promise<SuccessResponse<null>> {
     const { tournament_id, team_ids } = data;
+
+    if (!team_ids.length) {
+      throw new BadRequestException('At least one team must be assigned');
+    }
+
+    const uniqueTeamIds = [...new Set(team_ids)];
+
+    const payload = uniqueTeamIds.map((team_id) => ({
+      tournament_id,
+      team_id,
+    }));
 
     await this.tournamentTeamModel.destroy({
       where: { tournament_id },
     });
-
-    const payload = team_ids.map((team_id) => ({
-      tournament_id,
-      team_id,
-    }));
 
     await this.tournamentTeamModel.bulkCreate(payload);
 

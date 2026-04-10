@@ -37,7 +37,6 @@ export function MatchRow({
 
   return (
     <div className="flex items-center gap-4 px-5 py-4 hover:bg-background transition">
-      {/* Teams */}
       <div className="flex items-center gap-2 min-w-0 flex-1">
         <span
           className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${
@@ -58,7 +57,6 @@ export function MatchRow({
         </span>
       </div>
 
-      {/* Scores */}
       <div className="hidden sm:flex items-center gap-3 text-sm font-mono">
         <span className="font-semibold text-foreground">{homeScore}</span>
 
@@ -70,12 +68,10 @@ export function MatchRow({
         )}
       </div>
 
-      {/* Result */}
       <div className="hidden md:block text-xs text-muted text-right min-w-[140px]">
         {result}
       </div>
 
-      {/* Status */}
       <span
         className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border flex items-center gap-1 ${s.className}`}
       >

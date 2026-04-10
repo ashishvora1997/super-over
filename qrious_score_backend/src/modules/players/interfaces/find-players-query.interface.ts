@@ -1,5 +1,5 @@
 import { WhereOptions } from 'sequelize';
-import { Player } from '../players.model';
+import { Player } from '../models/players.model';
 
 export interface FindPlayersQuery {
   search?: string;

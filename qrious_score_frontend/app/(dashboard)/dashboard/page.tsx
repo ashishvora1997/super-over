@@ -1,12 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
 import { ActionButton } from "@/app/components/dashboard/action-button";
 import { MatchRow } from "@/app/components/dashboard/match-row";
 import { StatCard } from "@/app/components/dashboard/stat-card";
 import { useAuthStore } from "@/app/store/auth.store";
-import { usePlayerStore } from "@/app/store/players.store";
-import { useTeamStore } from "@/app/store/teams.store";
 import {
   Users,
   UsersRound,
@@ -20,55 +17,40 @@ import {
 export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);
 
-  // Get data from stores
-  const { total: totalPlayers, loading: playersLoading } = usePlayerStore();
-  const { total: totalTeams, loading: teamsLoading } = useTeamStore();
-
-  // Fetch data on component mount
-  useEffect(() => {
-    // Fetch players (we only need total count)
-    usePlayerStore.getState().fetchPlayers("", 1, "all");
-
-    // Fetch teams (we only need total count)
-    useTeamStore.getState().fetchTeams("", 1);
-  }, []);
-
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-foreground">
-          Welcome back {user?.name || "User"} 👋
+          Welcome back {user?.name} 👋
         </h2>
         <p className="text-sm text-muted">Here's what's happening today</p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-4">
         <StatCard
           title="Players"
-          value={playersLoading ? "..." : totalPlayers.toString()}
+          value="120"
           icon={Users}
-          trend="+12 this month" // TODO: Make dynamic later
+          trend="+12 this month"
           variant="blue"
         />
         <StatCard
           title="Teams"
-          value={teamsLoading ? "..." : totalTeams.toString()}
+          value="8"
           icon={UsersRound}
-          trend="+2 this month" // TODO: Make dynamic later
+          trend="+2 this month"
           variant="violet"
         />
         <StatCard
           title="Matches"
-          value="34" // TODO: Add matches store later
+          value="34"
           icon={Trophy}
           trend="+5 this week"
           variant="amber"
         />
         <StatCard
           title="Live Now"
-          value="2" // TODO: Add live matches logic later
+          value="2"
           icon={Radio}
           trend="Active matches"
           variant="green"
@@ -76,7 +58,6 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Recent Matches - Keeping as is (as per your instruction) */}
       <div className="bg-white border border-border rounded-2xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h3 className="text-sm font-semibold text-foreground">

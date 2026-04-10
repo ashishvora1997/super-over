@@ -1,4 +1,10 @@
-export type TournamentStatus = "upcoming" | "ongoing";
+export type TournamentStatus = "upcoming" | "ongoing" | "completed";
+
+export interface TournamentTeam {
+  id: number;
+  name: string;
+  city?: string;
+}
 
 export interface Tournament {
   id: number;
@@ -7,9 +13,11 @@ export interface Tournament {
   start_date: string;
   end_date: string;
   status: TournamentStatus;
-  teams: { id: number; name: string; city?: string }[];
-  created_at?: string;
-  updated_at?: string;
+
+  teams: TournamentTeam[];
+
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CreateTournamentPayload {
@@ -17,7 +25,7 @@ export interface CreateTournamentPayload {
   location: string;
   start_date: string;
   end_date: string;
-  status: TournamentStatus;
+  status?: TournamentStatus;
 }
 
 export interface UpdateTournamentPayload extends Partial<CreateTournamentPayload> {

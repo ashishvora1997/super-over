@@ -38,7 +38,6 @@ export function TablePagination({
 
   return (
     <div className="flex items-center justify-between px-5 py-3.5 border-t border-border bg-gray-50/50">
-      {/* Count */}
       <p className="text-xs text-muted">
         Showing{" "}
         <span className="font-semibold text-foreground">
@@ -51,7 +50,6 @@ export function TablePagination({
         of <span className="font-semibold text-foreground">{total}</span>
       </p>
 
-      {/* Pages */}
       <div className="flex items-center gap-1">
         <button
           onClick={() => onPageChange(page - 1)}
@@ -94,7 +92,6 @@ export function TablePagination({
         </button>
       </div>
 
-      {/* Rows label */}
       <p className="text-xs text-muted hidden sm:block">{pageSize} / page</p>
     </div>
   );
