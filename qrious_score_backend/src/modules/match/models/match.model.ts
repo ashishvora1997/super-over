@@ -40,7 +40,6 @@ export class Match extends Model {
   @Column
   declare winner_team_id: number;
 
-  // Relations
   @BelongsTo(() => Tournament)
   declare tournament: Tournament;
 

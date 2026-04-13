@@ -10,7 +10,6 @@ export interface Match {
   status: MatchStatus;
   winner_team_id: number | null;
 
-  // Relations (populated by backend includes)
   tournament?: { id: number; name: string };
   teamA?: { id: number; name: string };
   teamB?: { id: number; name: string };
@@ -23,7 +22,7 @@ export interface CreateMatchPayload {
   team_b_id: number;
   match_date: string;
   venue: string;
-  winner_team_id?: number | null; // optional at creation
+  winner_team_id?: number | null;
 }
 
 export interface UpdateMatchPayload extends Partial<CreateMatchPayload> {
