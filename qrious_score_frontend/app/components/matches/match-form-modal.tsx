@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import { FormModal } from "@/app/components/ui/modal/form-modal";
 import { useMatchStore } from "@/app/store/matches.store";
 import { useTournamentStore } from "@/app/store/tournament.store";
-import { Match, MatchStatus } from "@/app/types/match.types";
+import {
+  Match,
+  MatchStatus,
+  UpdateMatchPayload,
+} from "@/app/types/match.types";
 import toast from "react-hot-toast";
 import { CalendarDays, MapPin, Trophy, Swords } from "lucide-react";
 import { getErrorMessage } from "@/app/utils/error-handler";
@@ -99,7 +103,7 @@ export function MatchFormModal({ open, onClose, mode, match }: Props) {
         });
         toast.success("Match created successfully!");
       } else if (mode === "edit" && match?.id) {
-        const payload: any = { id: match.id };
+        const payload: UpdateMatchPayload = { id: match.id };
 
         if (form.match_date !== match.match_date)
           payload.match_date = form.match_date;
