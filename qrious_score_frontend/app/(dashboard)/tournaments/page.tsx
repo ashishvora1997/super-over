@@ -241,27 +241,29 @@ export default function TournamentsPage() {
           align: "right",
           render: (t) => (
             <div className="flex gap-1.5 justify-end">
-              <button
-                onClick={() => handleManageTeams(t)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-              >
-                <Users size={12} />
-                Teams
-              </button>
+              <RoleGuard allowedRoles={["scorer"]}>
+                <button
+                  onClick={() => handleManageTeams(t)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                >
+                  <Users size={12} />
+                  Teams
+                </button>
+              </RoleGuard>
               <button
                 onClick={() => handleEdit(t)}
                 className="p-1.5 rounded-lg hover:bg-primary/10 text-muted hover:text-primary transition-colors"
               >
                 <Pencil size={14} />
               </button>
-              {hasRole(user?.role, ["admin"]) && (
+              <RoleGuard allowedRoles={["admin"]}>
                 <button
                   onClick={() => handleDeleteClick(t)}
                   className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted hover:text-destructive transition-colors"
                 >
                   <Trash2 size={14} />
                 </button>
-              )}
+              </RoleGuard>
             </div>
           ),
         },

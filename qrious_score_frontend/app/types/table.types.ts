@@ -12,7 +12,6 @@ export interface TableProps<T> {
   loading?: boolean;
   emptyMessage?: string;
 
-  // Pagination Props
   page?: number;
   total?: number;
   pageSize?: number;

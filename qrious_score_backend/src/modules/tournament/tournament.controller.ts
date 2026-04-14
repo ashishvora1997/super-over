@@ -56,7 +56,7 @@ export class TournamentController {
   }
 
   @Delete(':id')
-  @Roles('admin', 'scorer')
+  @Roles('admin')
   delete(@Param('id') id: number) {
     return this.tournamentService.delete(Number(id));
   }
