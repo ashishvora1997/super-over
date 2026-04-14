@@ -73,8 +73,6 @@ function formatMatchDate(iso: string) {
   };
 }
 
-// ─── Skeleton ────────────────────────────────────────────────────────────────
-
 function MatchSkeleton() {
   return (
     <div className="bg-white border border-border rounded-2xl p-4 animate-pulse space-y-3">
@@ -100,8 +98,6 @@ function MatchSkeleton() {
     </div>
   );
 }
-
-// ─── Match Card ──────────────────────────────────────────────────────────────
 
 function MatchCard({
   match,
@@ -131,7 +127,6 @@ function MatchCard({
         status === "live" ? "shadow-accent/10" : ""
       }`}
     >
-      {/* ── Top bar: tournament + status + actions ── */}
       <div className="flex items-center justify-between px-4 pt-3 pb-2 gap-2">
         <div className="flex items-center gap-1.5 text-xs text-muted min-w-0 flex-1">
           <Trophy size={11} className="flex-shrink-0 text-muted/70" />
@@ -160,10 +155,8 @@ function MatchCard({
         </div>
       </div>
 
-      {/* ── VS Row ── */}
       <div className="px-4 py-3">
         <div className="flex items-center gap-2">
-          {/* Team A */}
           <div className="flex-1 flex items-center gap-2 min-w-0">
             <div
               className={`w-9 h-9 rounded-xl flex items-center justify-center text-[11px] font-bold flex-shrink-0 shadow-sm ${
@@ -192,7 +185,6 @@ function MatchCard({
             </div>
           </div>
 
-          {/* VS divider */}
           <div className="flex-shrink-0 flex flex-col items-center gap-0.5">
             <div
               className={`w-8 h-8 rounded-xl flex items-center justify-center ${
@@ -207,7 +199,6 @@ function MatchCard({
             </div>
           </div>
 
-          {/* Team B */}
           <div className="flex-1 flex items-center gap-2 justify-end min-w-0">
             <div className="min-w-0 text-right">
               <p
@@ -238,7 +229,6 @@ function MatchCard({
         </div>
       </div>
 
-      {/* ── Footer: date + venue ── */}
       <div className="flex items-center gap-x-3 gap-y-1 px-4 pb-3.5 flex-wrap border-t border-border/50 pt-2.5">
         <div className="flex items-center gap-1 text-[11px] text-muted">
           <CalendarDays size={11} className="flex-shrink-0" />
@@ -255,8 +245,6 @@ function MatchCard({
     </div>
   );
 }
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MatchesPage() {
   const {
@@ -320,7 +308,6 @@ export default function MatchesPage() {
 
   return (
     <div className="space-y-4 max-w-5xl mx-auto">
-      {/* ── Header ── */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-xl font-bold text-foreground tracking-tight">
@@ -420,7 +407,6 @@ export default function MatchesPage() {
         ))}
       </div>
 
-      {/* ── Match cards ── */}
       {loading ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (

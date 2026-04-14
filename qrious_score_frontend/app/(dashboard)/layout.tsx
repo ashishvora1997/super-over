@@ -63,16 +63,10 @@ export default function DashboardLayout({
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
 
-  const filteredNav = navItems.filter((item) =>
-    item.roles.includes(user?.role || "viewer"),
-  );
-
   return (
     <ProtectedRoute>
       <div className="h-[100dvh] flex flex-col bg-background">
-        {/* ── Body: Sidebar + Main ── */}
         <div className="flex flex-1 overflow-hidden">
-          {/* Desktop Sidebar */}
           <aside className="hidden md:flex w-64 bg-white border-r border-border flex-col">
             <div className="px-6 py-6 border-b border-border">
               <div className="flex items-center gap-2.5">
@@ -92,35 +86,42 @@ export default function DashboardLayout({
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted px-3 mb-3">
                 Main Menu
               </p>
-              {filteredNav.map((item) => {
-                const Icon = item.icon;
-                const active = pathname === item.href;
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
-                      active
-                        ? "bg-primary text-white shadow-md shadow-primary/20"
-                        : "text-muted hover:bg-gray-50 hover:text-foreground"
-                    }`}
-                  >
-                    <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+
+              {navItems
+                .filter((item) => item.roles.includes(user?.role || "viewer"))
+                .map((item) => {
+                  const Icon = item.icon;
+                  const active = pathname === item.href;
+
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
                         active
-                          ? "bg-white/20"
-                          : "bg-gray-100 group-hover:bg-gray-200"
+                          ? "bg-primary text-white shadow-md shadow-primary/20"
+                          : "text-muted hover:bg-gray-50 hover:text-foreground"
                       }`}
                     >
-                      <Icon size={16} strokeWidth={active ? 2.5 : 2} />
-                    </div>
-                    {item.name}
-                    {active && (
-                      <ChevronRight size={14} className="ml-auto opacity-60" />
-                    )}
-                  </Link>
-                );
-              })}
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                          active
+                            ? "bg-white/20"
+                            : "bg-gray-100 group-hover:bg-gray-200"
+                        }`}
+                      >
+                        <Icon size={16} strokeWidth={active ? 2.5 : 2} />
+                      </div>
+                      {item.name}
+                      {active && (
+                        <ChevronRight
+                          size={14}
+                          className="ml-auto opacity-60"
+                        />
+                      )}
+                    </Link>
+                  );
+                })}
             </nav>
 
             <div className="px-3 py-4 border-t border-border">
@@ -148,30 +149,33 @@ export default function DashboardLayout({
           className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-border flex justify-around items-center px-1 z-50"
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
-          {filteredNav.map((item) => {
-            const Icon = item.icon;
-            const active = pathname === item.href;
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex flex-col items-center justify-center gap-0.5 py-2 px-3 rounded-xl transition-colors flex-1 ${
-                  active ? "text-primary" : "text-muted hover:text-foreground"
-                }`}
-              >
-                <div
-                  className={`p-1.5 rounded-lg transition-colors ${
-                    active ? "bg-primary/10" : ""
+          {navItems
+            .filter((item) => item.roles.includes(user?.role || "viewer"))
+            .map((item) => {
+              const Icon = item.icon;
+              const active = pathname === item.href;
+
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`flex flex-col items-center justify-center gap-0.5 py-2 px-3 rounded-xl transition-colors flex-1 ${
+                    active ? "text-primary" : "text-muted hover:text-foreground"
                   }`}
                 >
-                  <Icon size={18} strokeWidth={active ? 2.5 : 1.8} />
-                </div>
-                <span className="text-[10px] font-medium leading-none">
-                  {item.name}
-                </span>
-              </Link>
-            );
-          })}
+                  <div
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      active ? "bg-primary/10" : ""
+                    }`}
+                  >
+                    <Icon size={18} strokeWidth={active ? 2.5 : 1.8} />
+                  </div>
+                  <span className="text-[10px] font-medium leading-none">
+                    {item.name}
+                  </span>
+                </Link>
+              );
+            })}
         </nav>
       </div>
     </ProtectedRoute>

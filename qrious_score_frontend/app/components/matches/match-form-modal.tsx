@@ -99,18 +99,27 @@ export function MatchFormModal({ open, onClose, mode, match }: Props) {
         });
         toast.success("Match created successfully!");
       } else if (mode === "edit" && match?.id) {
-        await updateMatch({
-          id: match.id,
-          team_a_id: Number(form.team_a_id),
-          team_b_id: Number(form.team_b_id),
-          match_date: form.match_date,
-          venue: form.venue,
-          status: form.status,
-          ...(form.status === "completed" && form.winner_team_id
-            ? { winner_team_id: Number(form.winner_team_id) }
-            : {}),
-        });
-        toast.success("Match updated successfully!");
+        const payload: any = { id: match.id };
+
+        if (form.match_date !== match.match_date)
+          payload.match_date = form.match_date;
+
+        if (form.venue !== match.venue) payload.venue = form.venue;
+
+        if (form.status !== match.status) payload.status = form.status;
+
+        if (form.status !== "completed") {
+          if (form.team_a_id !== match.team_a_id)
+            payload.team_a_id = Number(form.team_a_id);
+
+          if (form.team_b_id !== match.team_b_id)
+            payload.team_b_id = Number(form.team_b_id);
+        }
+
+        if (form.status === "completed") {
+          payload.winner_team_id = Number(form.winner_team_id);
+        }
+        await updateMatch(payload);
       }
 
       onClose();
