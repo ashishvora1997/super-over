@@ -36,6 +36,18 @@ export class PlayersService {
     return successResponse('Player created successfully', player);
   }
 
+  async findAllPlayersList(): Promise<SuccessResponse<Player[]>> {
+    const players = await this.playerModel.findAll({
+      attributes: ['id', 'name', 'role'],
+      order: [['name', 'ASC']],
+    });
+
+    return successResponse(
+      'Players retrieved successfully for selection',
+      players,
+    );
+  }
+
   async findAll(
     query: FindPlayersQuery = {},
   ): Promise<SuccessResponse<Player[]>> {
@@ -60,6 +72,7 @@ export class PlayersService {
       limit,
       offset,
       order: [['createdAt', 'DESC']],
+      distinct: true,
     });
 
     return successResponse('Players retrieved successfully', rows, {

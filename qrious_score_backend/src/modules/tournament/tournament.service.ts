@@ -85,6 +85,7 @@ export class TournamentService {
         },
       ],
       order: [['createdAt', 'DESC']],
+      distinct: true,
     });
 
     return successResponse('Tournaments retrieved successfully', rows, {

@@ -16,6 +16,11 @@ export const getPlayers = async (
   return res.data;
 };
 
+export const getPlayersList = async (): Promise<SuccessResponse<Player[]>> => {
+  const res = await api.get("/players/list");
+  return res.data;
+};
+
 export const createPlayer = async (
   data: Partial<Player>,
 ): Promise<SuccessResponse<Player>> => {

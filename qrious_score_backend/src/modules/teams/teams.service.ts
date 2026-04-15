@@ -81,6 +81,7 @@ export class TeamsService {
         },
       ],
       order: [['createdAt', 'DESC']],
+      distinct: true,
     });
 
     return successResponse('Teams retrieved successfully', rows, {

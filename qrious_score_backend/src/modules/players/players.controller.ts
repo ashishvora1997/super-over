@@ -28,6 +28,11 @@ export class PlayersController {
     return this.playersService.create(body);
   }
 
+  @Get('list')
+  async findAllPlayersList() {
+    return this.playersService.findAllPlayersList();
+  }
+
   @Get()
   findAll(@Query() query: FindPlayersQuery) {
     return this.playersService.findAll(query);
