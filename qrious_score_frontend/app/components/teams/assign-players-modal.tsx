@@ -26,7 +26,7 @@ export function AssignPlayersModal({
   onClose: () => void;
   team: Team | null;
 }) {
-  const { players, fetchPlayers } = usePlayerStore();
+  const { players, fetchPlayersList } = usePlayerStore();
   const { updateCaptainInStore } = useTeamStore();
 
   const [selected, setSelected] = useState<number[]>([]);
@@ -35,7 +35,9 @@ export function AssignPlayersModal({
   const [currentCaptainId, setCurrentCaptainId] = useState<number | null>(null);
 
   useEffect(() => {
-    if (open) fetchPlayers("", 1);
+    if (open) {
+      fetchPlayersList();
+    }
   }, [open]);
 
   useEffect(() => {

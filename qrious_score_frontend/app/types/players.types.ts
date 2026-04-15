@@ -26,6 +26,8 @@ export interface PlayerState {
     role?: string,
   ) => Promise<void>;
 
+  fetchPlayersList: () => Promise<void>;
+
   createPlayer: (data: Partial<Player>) => Promise<SuccessResponse<Player>>;
   updatePlayer: (
     id: number,

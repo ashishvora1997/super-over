@@ -4,6 +4,7 @@ import {
   updatePlayer as updatePlayerAPI,
   deletePlayer as deletePlayerAPI,
   getPlayers,
+  getPlayersList,
 } from "../services/players.service";
 import { Player, PlayerState } from "../types/players.types";
 
@@ -39,6 +40,23 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     } catch (error) {
       console.error("Failed to fetch players:", error);
       set({ players: [], total: 0 });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  fetchPlayersList: async () => {
+    set({ loading: true });
+
+    try {
+      const apiResponse = await getPlayersList();
+
+      set({
+        players: apiResponse.data || [],
+      });
+    } catch (error) {
+      console.error("Failed to fetch players for selection:", error);
+      set({ players: [] });
     } finally {
       set({ loading: false });
     }
