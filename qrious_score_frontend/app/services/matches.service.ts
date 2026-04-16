@@ -15,6 +15,13 @@ export const getMatches = async (
   return res.data;
 };
 
+export const getMatchById = async (
+  id: number,
+): Promise<SuccessResponse<Match>> => {
+  const res = await api.get(`/matches/${id}`);
+  return res.data;
+};
+
 export const createMatch = async (
   payload: CreateMatchPayload,
 ): Promise<SuccessResponse<Match>> => {
