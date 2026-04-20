@@ -15,6 +15,7 @@ import { UpdateMatchDto } from './dtos/update-match.dto';
 import { SuccessResponse } from 'src/common/types/response.type';
 import { InjectModel } from '@nestjs/sequelize';
 import { Team } from '../teams/models/teams.model';
+import { Player } from '../players/models/players.model';
 
 const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
   scheduled: ['live'],
@@ -125,8 +126,22 @@ export class MatchService {
     const match = await this.matchModel.findByPk(id, {
       include: [
         { model: Tournament, attributes: ['id', 'name'] },
-        { model: Team, as: 'teamA', attributes: ['id', 'name'] },
-        { model: Team, as: 'teamB', attributes: ['id', 'name'] },
+        {
+          model: Team,
+          as: 'teamA',
+          attributes: ['id', 'name'],
+          include: [
+            { model: Player, as: 'players', attributes: ['id', 'name'] },
+          ],
+        },
+        {
+          model: Team,
+          as: 'teamB',
+          attributes: ['id', 'name'],
+          include: [
+            { model: Player, as: 'players', attributes: ['id', 'name'] },
+          ],
+        },
         { model: Team, as: 'winner', attributes: ['id', 'name'] },
       ],
     });

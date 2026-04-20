@@ -11,8 +11,16 @@ export interface Match {
   winner_team_id: number | null;
 
   tournament?: { id: number; name: string };
-  teamA?: { id: number; name: string };
-  teamB?: { id: number; name: string };
+  teamA?: {
+    id: number;
+    name: string;
+    players?: { id: number; name: string }[];
+  };
+  teamB?: {
+    id: number;
+    name: string;
+    players?: { id: number; name: string }[];
+  };
   winner?: { id: number; name: string } | null;
 }
 

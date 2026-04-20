@@ -9,6 +9,8 @@ import { PlayersModule } from './modules/players/players.module';
 import { TeamsModule } from './modules/teams/teams.module';
 import { TournamentModule } from './modules/tournament/tournament.module';
 import { MatchModule } from './modules/match/match.module';
+import { TossModule } from './modules/toss/toss.module';
+import { InningsModule } from './modules/innings/innings.module';
 
 @Module({
   imports: [
@@ -36,6 +38,8 @@ import { MatchModule } from './modules/match/match.module';
     TeamsModule,
     TournamentModule,
     MatchModule,
+    TossModule,
+    InningsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

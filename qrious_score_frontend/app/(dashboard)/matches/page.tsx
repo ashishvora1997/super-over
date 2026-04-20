@@ -19,6 +19,7 @@ import { useMatchStore } from "@/app/store/matches.store";
 import { useTournamentStore } from "@/app/store/tournament.store";
 import { Match, MatchStatus } from "@/app/types/match.types";
 import { RoleGuard } from "@/app/components/auth/role-guard";
+import { useRouter } from "next/navigation";
 
 const STATUS_CONFIG: Record<
   MatchStatus,
@@ -111,6 +112,7 @@ function MatchCard({
   const status: MatchStatus = match.status ?? "scheduled";
   const cfg = STATUS_CONFIG[status];
   const { date, time } = formatMatchDate(match.match_date);
+  const router = useRouter();
 
   const teamAName = match.teamA?.name ?? "Team A";
   const teamBName = match.teamB?.name ?? "Team B";
@@ -123,7 +125,8 @@ function MatchCard({
 
   return (
     <div
-      className={`bg-white border rounded-2xl overflow-hidden shadow-sm transition-shadow hover:shadow-md ${cfg.cardBorder} ${
+      onClick={() => router.push(`/matches/${match.id}`)}
+      className={`cursor-pointer bg-white border rounded-2xl overflow-hidden shadow-sm transition-shadow hover:shadow-md ${cfg.cardBorder} ${
         status === "live" ? "shadow-accent/10" : ""
       }`}
     >
@@ -138,7 +141,10 @@ function MatchCard({
           <StatusBadge status={status} />
           <RoleGuard allowedRoles={["admin", "scorer"]}>
             <button
-              onClick={onEdit}
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
               className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-primary/10 text-muted hover:text-primary transition-colors"
             >
               <Pencil size={13} />
@@ -146,7 +152,10 @@ function MatchCard({
           </RoleGuard>
           <RoleGuard allowedRoles={["admin"]}>
             <button
-              onClick={onDelete}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
               className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-destructive/10 text-muted hover:text-destructive transition-colors"
             >
               <Trash2 size={13} />

@@ -5,9 +5,12 @@ import { SequelizeModule } from '@nestjs/sequelize';
 import { Match } from './models/match.model';
 import { Tournament } from '../tournament/models/tournament.model';
 import { TournamentTeam } from '../tournament/models/tournament-team.model';
+import { Player } from '../players/models/players.model';
 
 @Module({
-  imports: [SequelizeModule.forFeature([Match, Tournament, TournamentTeam])],
+  imports: [
+    SequelizeModule.forFeature([Match, Tournament, TournamentTeam, Player]),
+  ],
   controllers: [MatchController],
   providers: [MatchService],
   exports: [MatchService],

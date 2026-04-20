@@ -5,10 +5,14 @@ import {
   DataType,
   ForeignKey,
   BelongsTo,
+  HasOne,
+  HasMany,
 } from 'sequelize-typescript';
 
 import { Tournament } from '../../tournament/models/tournament.model';
 import { Team } from '../../teams/models/teams.model';
+import { Toss } from 'src/modules/toss/models/toss.model';
+import { Innings } from 'src/modules/innings/models/innings.model';
 
 @Table({ tableName: 'matches' })
 export class Match extends Model {
@@ -51,4 +55,10 @@ export class Match extends Model {
 
   @BelongsTo(() => Team, 'winner_team_id')
   declare winner: Team;
+
+  @HasOne(() => Toss)
+  declare toss: Toss;
+
+  @HasMany(() => Innings)
+  declare innings: Innings[];
 }
