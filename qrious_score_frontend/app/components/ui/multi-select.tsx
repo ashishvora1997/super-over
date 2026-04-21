@@ -12,10 +12,14 @@ export function MultiSelect({
   options,
   value,
   onChange,
+  label,
+  required,
 }: {
   options: Option[];
   value: number[];
   onChange: (val: number[]) => void;
+  label?: string;
+  required?: boolean;
 }) {
   const [search, setSearch] = useState("");
 
@@ -34,8 +38,15 @@ export function MultiSelect({
   const clearAll = () => onChange([]);
 
   return (
-    <div className="border border-border rounded-xl bg-white overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2.5 bg-gray-50 border-b border-border">
+    <div className="w-full">
+      {label && (
+        <label className="block text-sm font-medium text-muted mb-1.5">
+          {label}
+          {required && <span className="text-destructive ml-1">*</span>}
+        </label>
+      )}
+      <div className="border border-border rounded-xl bg-white overflow-hidden">
+        <div className="flex items-center justify-between px-3 py-2.5 bg-gray-50 border-b border-border">
         <span className="text-xs font-medium text-foreground">
           {value.length > 0 ? (
             <span className="text-primary font-semibold">
@@ -115,6 +126,7 @@ export function MultiSelect({
             );
           })
         )}
+      </div>
       </div>
     </div>
   );

@@ -1,21 +1,34 @@
 "use client";
 
-import { ActionButton } from "@/app/components/dashboard/action-button";
 import { MatchRow } from "@/app/components/dashboard/match-row";
 import { StatCard } from "@/app/components/dashboard/stat-card";
 import { useAuthStore } from "@/app/store/auth.store";
-import {
-  Users,
-  UsersRound,
-  Trophy,
-  Radio,
-  UserPlus,
-  PlusCircle,
-  BarChart3,
-} from "lucide-react";
+import { useMatchStore } from "@/app/store/matches.store";
+import { usePlayerStore } from "@/app/store/players.store";
+import { useTeamStore } from "@/app/store/teams.store";
+import { Users, UsersRound, Trophy, Radio } from "lucide-react";
+import { useEffect } from "react";
 
 export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);
+  const players = usePlayerStore((state) => state.playersList);
+  const teams = useTeamStore((state) => state.teamsList);
+  const matchesList = useMatchStore((state) => state.matchesList);
+  const matches = useMatchStore((state) => state.matches);
+
+  const fetchPlayersList = usePlayerStore((state) => state.fetchPlayersList);
+  const fetchTeamsList = useTeamStore((state) => state.fetchTeamsList);
+  const fetchMatchesList = useMatchStore((state) => state.fetchMatchesList);
+  const fetchMatches = useMatchStore((state) => state.fetchMatches);
+
+  useEffect(() => {
+    fetchPlayersList();
+    fetchTeamsList();
+    fetchMatchesList();
+    fetchMatches();
+  }, [fetchPlayersList, fetchTeamsList, fetchMatchesList, fetchMatches]);
+
+  const liveMatches = matches.filter((item) => item.status === "live").length;
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -29,28 +42,28 @@ export default function DashboardPage() {
       <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-4">
         <StatCard
           title="Players"
-          value="120"
+          value={`${players.length}`}
           icon={Users}
           trend="+12 this month"
           variant="blue"
         />
         <StatCard
           title="Teams"
-          value="8"
+          value={`${teams.length}`}
           icon={UsersRound}
           trend="+2 this month"
           variant="violet"
         />
         <StatCard
           title="Matches"
-          value="34"
+          value={`${matchesList.length}`}
           icon={Trophy}
           trend="+5 this week"
           variant="amber"
         />
         <StatCard
           title="Live Now"
-          value="2"
+          value={`${liveMatches}`}
           icon={Radio}
           trend="Active matches"
           variant="green"

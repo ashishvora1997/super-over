@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import { MapPin, CalendarDays, Swords, Trophy } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { MapPin, CalendarDays, Swords, Trophy, Zap, Eye } from "lucide-react";
+import { useAuthStore } from "@/app/store/auth.store";
 import { useTossStore } from "@/app/store/toss.store";
 import { useInningsStore } from "@/app/store/innings.store";
 import { useMatchStore } from "@/app/store/matches.store";
@@ -24,8 +25,10 @@ function MatchDetailSkeleton() {
 
 export default function MatchDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const matchId = Number(params.matchId);
   const [matchDetail, setMatchDetail] = useState<Match | null>(null);
+  const user = useAuthStore((state) => state.user);
 
   const { matches, fetchMatches } = useMatchStore();
   const {
@@ -143,7 +146,29 @@ export default function MatchDetailPage() {
 
       {innings.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-bold text-foreground">Innings</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-foreground">Innings</h3>
+            {(() => {
+              const isLive = innings.some((i) => i.status === "in_progress");
+              const isScorer =
+                user?.role === "admin" || user?.role === "scorer";
+              const showScoringBtn = isScorer && isLive;
+
+              return (
+                <button
+                  onClick={() => router.push(`/matches/${matchId}/scoring`)}
+                  className={`flex items-center gap-1.5 px-4 py-2 text-white text-xs font-bold rounded-xl shadow-md transition-all active:scale-95 hover:shadow-lg ${
+                    showScoringBtn
+                      ? "bg-gradient-to-r from-accent to-accent-dark shadow-accent/25"
+                      : "bg-gradient-to-r from-blue-500 to-blue-600 shadow-blue-500/25"
+                  }`}
+                >
+                  {showScoringBtn ? <Zap size={13} /> : <Eye size={13} />}
+                  {showScoringBtn ? "Start Scoring" : "View Scoreboard"}
+                </button>
+              );
+            })()}
+          </div>
           {innings.map((inn) => {
             const battingPlayers =
               inn.batting_team_id === matchDetail.team_a_id

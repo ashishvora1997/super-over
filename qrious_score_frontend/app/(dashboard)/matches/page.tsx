@@ -10,9 +10,12 @@ import {
   CalendarDays,
   Swords,
   Filter,
+  Zap,
+  Eye,
 } from "lucide-react";
 
 import { ConfirmModal } from "@/app/components/ui/modal/confirm-modal";
+import { useAuthStore } from "@/app/store/auth.store";
 import { MatchFormModal } from "@/app/components/matches/match-form-modal";
 
 import { useMatchStore } from "@/app/store/matches.store";
@@ -20,6 +23,8 @@ import { useTournamentStore } from "@/app/store/tournament.store";
 import { Match, MatchStatus } from "@/app/types/match.types";
 import { RoleGuard } from "@/app/components/auth/role-guard";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+import { getErrorMessage } from "@/app/utils/error-handler";
 
 const STATUS_CONFIG: Record<
   MatchStatus,
@@ -109,10 +114,12 @@ function MatchCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+
   const status: MatchStatus = match.status ?? "scheduled";
   const cfg = STATUS_CONFIG[status];
   const { date, time } = formatMatchDate(match.match_date);
-  const router = useRouter();
 
   const teamAName = match.teamA?.name ?? "Team A";
   const teamBName = match.teamB?.name ?? "Team B";
@@ -140,15 +147,17 @@ function MatchCard({
         <div className="flex items-center gap-1 flex-shrink-0">
           <StatusBadge status={status} />
           <RoleGuard allowedRoles={["admin", "scorer"]}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit();
-              }}
-              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-primary/10 text-muted hover:text-primary transition-colors"
-            >
-              <Pencil size={13} />
-            </button>
+            {status !== "completed" && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-primary/10 text-muted hover:text-primary transition-colors"
+              >
+                <Pencil size={13} />
+              </button>
+            )}
           </RoleGuard>
           <RoleGuard allowedRoles={["admin"]}>
             <button
@@ -250,6 +259,12 @@ function MatchCard({
             <span className="truncate">{match.venue}</span>
           </div>
         )}
+        {match.overs_per_side && (
+          <div className="flex items-center gap-1 text-[11px] text-muted">
+            <Zap size={11} className="flex-shrink-0" />
+            <span>{match.overs_per_side} Overs</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -293,10 +308,19 @@ export default function MatchesPage() {
     setToDelete(m);
     setDeleteOpen(true);
   };
+
   const handleDeleteConfirm = async () => {
     if (!toDelete) return;
-    await deleteMatch(toDelete.id);
+
     setDeleteOpen(false);
+    setToDelete(null);
+
+    try {
+      await deleteMatch(toDelete.id);
+      toast.success("Match deleted successfully");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
+    }
   };
 
   const grouped = {

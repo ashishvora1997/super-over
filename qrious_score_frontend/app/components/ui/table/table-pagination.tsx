@@ -37,8 +37,8 @@ export function TablePagination({
   const pageNumbers = getPageNumbers();
 
   return (
-    <div className="flex items-center justify-between px-5 py-3.5 border-t border-border bg-gray-50/50">
-      <p className="text-xs text-muted">
+    <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 border-t border-border bg-gray-50/50 gap-3 sm:gap-0">
+      <p className="text-xs text-muted w-full sm:w-auto text-center sm:text-left">
         Showing{" "}
         <span className="font-semibold text-foreground">
           {(page - 1) * pageSize + 1}
@@ -59,29 +59,35 @@ export function TablePagination({
           <ChevronLeft size={15} />
         </button>
 
-        {pageNumbers.map((item, index) =>
-          item === "..." ? (
-            <span
-              key={index}
-              className="w-8 h-8 flex items-center justify-center text-xs text-muted"
-            >
-              ···
-            </span>
-          ) : (
-            <button
-              key={item as number}
-              onClick={() => !isSinglePage && onPageChange(item as number)}
-              disabled={isSinglePage}
-              className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-colors ${
-                item === page
-                  ? "bg-primary text-white shadow-sm"
-                  : "border border-border bg-white hover:bg-gray-100 text-foreground"
-              } ${isSinglePage ? "cursor-not-allowed" : ""}`}
-            >
-              {item}
-            </button>
-          ),
-        )}
+        <div className="hidden sm:flex items-center gap-1">
+          {pageNumbers.map((item, index) =>
+            item === "..." ? (
+              <span
+                key={index}
+                className="w-8 h-8 flex items-center justify-center text-xs text-muted"
+              >
+                ···
+              </span>
+            ) : (
+              <button
+                key={item as number}
+                onClick={() => !isSinglePage && onPageChange(item as number)}
+                disabled={isSinglePage}
+                className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-colors ${
+                  item === page
+                    ? "bg-primary text-white shadow-sm"
+                    : "border border-border bg-white hover:bg-gray-100 text-foreground"
+                } ${isSinglePage ? "cursor-not-allowed" : ""}`}
+              >
+                {item}
+              </button>
+            ),
+          )}
+        </div>
+        
+        <div className="flex sm:hidden items-center justify-center text-xs font-semibold px-3 text-foreground">
+          Page {page} of {totalPages}
+        </div>
 
         <button
           onClick={() => onPageChange(page + 1)}

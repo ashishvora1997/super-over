@@ -91,6 +91,15 @@ export class TeamsService {
     });
   }
 
+  async findAllTeamsList(): Promise<SuccessResponse<Team[]>> {
+    const teams = await this.teamModel.findAll({
+      attributes: ['id', 'name'],
+      order: [['name', 'ASC']],
+    });
+
+    return successResponse('Teams retrieved successfully for selection', teams);
+  }
+
   async findOne(id: number): Promise<SuccessResponse<Team>> {
     await this.findTeamById(id);
 
@@ -195,5 +204,47 @@ export class TeamsService {
     });
 
     return successResponse('Captain assigned successfully', updatedTeam!);
+  }
+
+  async setWicketKeeper(
+    data: import('./dtos/set-wicket-keeper.dto').SetWicketKeeperDto,
+  ): Promise<SuccessResponse<Team>> {
+    const { team_id, player_id } = data;
+
+    const team = await this.teamModel.findByPk(team_id);
+
+    if (!team) {
+      throw new NotFoundException('Team not found');
+    }
+
+    const player = await this.playerModel.findByPk(player_id);
+
+    if (!player) {
+      throw new NotFoundException('Player not found');
+    }
+
+    const relation = await this.teamPlayerModel.findOne({
+      where: {
+        team_id,
+        player_id,
+      },
+    });
+
+    if (!relation) {
+      throw new BadRequestException('Player is not part of this team');
+    }
+
+    await team.update({ wicket_keeper_id: player_id });
+
+    const updatedTeam = await this.teamModel.findByPk(team_id, {
+      include: [
+        {
+          model: Player,
+          as: 'wicket_keeper',
+        },
+      ],
+    });
+
+    return successResponse('Wicket keeper assigned successfully', updatedTeam!);
   }
 }

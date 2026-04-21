@@ -42,6 +42,13 @@ export class Team extends Model {
   @BelongsTo(() => Player, 'captain_id')
   declare captain?: Player;
 
+  @ForeignKey(() => Player)
+  @Column(DataType.INTEGER)
+  declare wicket_keeper_id?: number;
+
+  @BelongsTo(() => Player, 'wicket_keeper_id')
+  declare wicket_keeper?: Player;
+
   @ForeignKey(() => User)
   @Column(DataType.INTEGER)
   declare user_id?: number;

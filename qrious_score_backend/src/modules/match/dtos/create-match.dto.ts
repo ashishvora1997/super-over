@@ -1,4 +1,4 @@
-import { IsInt, IsDateString, IsString } from 'class-validator';
+import { IsInt, IsDateString, IsString, IsOptional, Min } from 'class-validator';
 
 export class CreateMatchDto {
   @IsInt()
@@ -15,4 +15,9 @@ export class CreateMatchDto {
 
   @IsString()
   venue: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  overs_per_side?: number;
 }

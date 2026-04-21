@@ -10,8 +10,10 @@ import {
   UpdateMatchPayload,
 } from "@/app/types/match.types";
 import toast from "react-hot-toast";
-import { CalendarDays, MapPin, Trophy, Swords } from "lucide-react";
 import { getErrorMessage } from "@/app/utils/error-handler";
+import { Input } from "@/app/components/ui/input";
+import { Select } from "@/app/components/ui/select";
+import { Swords } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -20,11 +22,16 @@ interface Props {
   match?: Match | null;
 }
 
-const STATUS_OPTIONS: { value: MatchStatus; label: string }[] = [
-  { value: "scheduled", label: "Scheduled" },
-  { value: "live", label: "Live" },
-  { value: "completed", label: "Completed" },
-];
+const getStatusOptions = (mode: "create" | "edit") => {
+  const options: { value: MatchStatus; label: string }[] = [
+    { value: "scheduled", label: "Scheduled" },
+    { value: "live", label: "Live" },
+  ];
+  if (mode === "edit") {
+    options.push({ value: "completed", label: "Completed" });
+  }
+  return options;
+};
 
 const EMPTY_FORM = {
   tournament_id: "" as number | "",
@@ -32,6 +39,7 @@ const EMPTY_FORM = {
   team_b_id: "" as number | "",
   match_date: "",
   venue: "",
+  overs_per_side: 20 as number,
   status: "scheduled" as MatchStatus,
   winner_team_id: "" as number | "",
 };
@@ -41,6 +49,7 @@ export function MatchFormModal({ open, onClose, mode, match }: Props) {
   const { tournaments, fetchTournaments } = useTournamentStore();
 
   const [form, setForm] = useState(EMPTY_FORM);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -55,12 +64,14 @@ export function MatchFormModal({ open, onClose, mode, match }: Props) {
         team_b_id: match.team_b_id ?? "",
         match_date: match.match_date?.slice(0, 16) ?? "",
         venue: match.venue ?? "",
+        overs_per_side: match.overs_per_side ?? 20,
         status: match.status ?? "scheduled",
         winner_team_id: match.winner_team_id ?? "",
       });
     } else {
       setForm(EMPTY_FORM);
     }
+    setErrors({});
   }, [mode, match, open]);
 
   const set = <K extends keyof typeof EMPTY_FORM>(
@@ -68,9 +79,15 @@ export function MatchFormModal({ open, onClose, mode, match }: Props) {
     value: (typeof EMPTY_FORM)[K],
   ) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    if (errors[key]) setErrors((prev) => ({ ...prev, [key]: "" }));
   };
 
-  const selectedTournament = tournaments.find(
+  const availableTournaments =
+    mode === "create"
+      ? tournaments.filter((t) => t.status === "ongoing")
+      : tournaments;
+
+  const selectedTournament = availableTournaments.find(
     (t) => t.id === Number(form.tournament_id),
   );
   const tournamentTeams = selectedTournament?.teams ?? [];
@@ -80,19 +97,28 @@ export function MatchFormModal({ open, onClose, mode, match }: Props) {
   );
 
   const handleSubmit = async () => {
-    if (!form.tournament_id) return toast.error("Select a tournament");
-    if (!form.team_a_id) return toast.error("Select Team A");
-    if (!form.team_b_id) return toast.error("Select Team B");
-    if (Number(form.team_a_id) === Number(form.team_b_id))
-      return toast.error("Both teams cannot be the same");
-    if (!form.match_date) return toast.error("Match date is required");
-
+    const newErrors: Record<string, string> = {};
+    if (!form.tournament_id) newErrors.tournament_id = "Select a tournament";
+    if (!form.team_a_id) newErrors.team_a_id = "Select Team A";
+    if (!form.team_b_id) newErrors.team_b_id = "Select Team B";
+    if (
+      form.team_a_id &&
+      form.team_b_id &&
+      Number(form.team_a_id) === Number(form.team_b_id)
+    )
+      newErrors.team_b_id = "Both teams cannot be the same";
+    if (!form.match_date) newErrors.match_date = "Match date is required";
     if (mode === "edit" && form.status === "completed" && !form.winner_team_id)
-      return toast.error("Select a winner for completed match");
+      newErrors.winner_team_id = "Select a winner for completed match";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    setErrors({});
 
     try {
       setLoading(true);
-
       if (mode === "create") {
         await createMatch({
           tournament_id: Number(form.tournament_id),
@@ -100,32 +126,27 @@ export function MatchFormModal({ open, onClose, mode, match }: Props) {
           team_b_id: Number(form.team_b_id),
           match_date: form.match_date,
           venue: form.venue,
+          overs_per_side: Number(form.overs_per_side),
         });
         toast.success("Match created successfully!");
       } else if (mode === "edit" && match?.id) {
         const payload: UpdateMatchPayload = { id: match.id };
-
         if (form.match_date !== match.match_date)
           payload.match_date = form.match_date;
-
         if (form.venue !== match.venue) payload.venue = form.venue;
-
         if (form.status !== match.status) payload.status = form.status;
-
         if (form.status !== "completed") {
           if (form.team_a_id !== match.team_a_id)
             payload.team_a_id = Number(form.team_a_id);
-
           if (form.team_b_id !== match.team_b_id)
             payload.team_b_id = Number(form.team_b_id);
         }
-
         if (form.status === "completed") {
           payload.winner_team_id = Number(form.winner_team_id);
         }
         await updateMatch(payload);
+        toast.success("Match updated successfully!");
       }
-
       onClose();
     } catch (err: unknown) {
       toast.error(getErrorMessage(err));
@@ -143,136 +164,89 @@ export function MatchFormModal({ open, onClose, mode, match }: Props) {
       submitText={mode === "create" ? "Schedule Match" : "Save Changes"}
       loading={loading}
     >
-      <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-          Tournament
-        </label>
-        <div className="relative">
-          <Trophy
-            size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
-          />
-          <select
-            value={form.tournament_id}
-            onChange={(e) => {
-              set(
-                "tournament_id",
-                e.target.value ? Number(e.target.value) : "",
-              );
-              set("team_a_id", "");
-              set("team_b_id", "");
-              set("winner_team_id", "");
-            }}
-            className="w-full pl-9 pr-4 py-2.5 border border-border rounded-xl text-sm bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 appearance-none"
-          >
-            <option value="">Select tournament...</option>
-            {tournaments.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+      <Select
+        label="Tournament"
+        required
+        value={String(form.tournament_id)}
+        onChange={(val) => {
+          set("tournament_id", val ? Number(val) : "");
+          set("team_a_id", "");
+          set("team_b_id", "");
+          set("winner_team_id", "");
+        }}
+        placeholder="Select tournament..."
+        options={availableTournaments.map((t) => ({
+          label: t.name,
+          value: String(t.id),
+        }))}
+        error={errors.tournament_id}
+      />
 
       <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-muted uppercase tracking-wider flex items-center gap-1.5">
-          <Swords size={11} />
-          Teams
+        <label className="block text-sm font-medium text-muted">
+          <span className="flex items-center gap-1.5">
+            <Swords size={13} />
+            Teams
+            <span className="text-destructive ml-0.5">*</span>
+          </span>
         </label>
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <p className="text-[10px] font-semibold text-muted mb-1 uppercase tracking-wider">
-              Team A
-            </p>
-            <select
-              value={form.team_a_id}
-              onChange={(e) =>
-                set("team_a_id", e.target.value ? Number(e.target.value) : "")
-              }
-              disabled={!form.tournament_id}
-              className="w-full px-3 py-2.5 border border-border rounded-xl text-sm bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">Select...</option>
-              {tournamentTeams
-                .filter((t) => t.id !== Number(form.team_b_id))
-                .map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-            </select>
-          </div>
-
-          <div>
-            <p className="text-[10px] font-semibold text-muted mb-1 uppercase tracking-wider">
-              Team B
-            </p>
-            <select
-              value={form.team_b_id}
-              onChange={(e) =>
-                set("team_b_id", e.target.value ? Number(e.target.value) : "")
-              }
-              disabled={!form.tournament_id}
-              className="w-full px-3 py-2.5 border border-border rounded-xl text-sm bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">Select...</option>
-              {tournamentTeams
-                .filter((t) => t.id !== Number(form.team_a_id))
-                .map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-            </select>
-          </div>
+          <Select
+            placeholder="Team A"
+            value={String(form.team_a_id)}
+            onChange={(val) => set("team_a_id", val ? Number(val) : "")}
+            options={tournamentTeams
+              .filter((t) => t.id !== Number(form.team_b_id))
+              .map((t) => ({ label: t.name, value: String(t.id) }))}
+            error={errors.team_a_id}
+          />
+          <Select
+            placeholder="Team B"
+            value={String(form.team_b_id)}
+            onChange={(val) => set("team_b_id", val ? Number(val) : "")}
+            options={tournamentTeams
+              .filter((t) => t.id !== Number(form.team_a_id))
+              .map((t) => ({ label: t.name, value: String(t.id) }))}
+            error={errors.team_b_id}
+          />
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-            Date & Time
-          </label>
-          <div className="relative">
-            <CalendarDays
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
-            />
-            <input
-              type="datetime-local"
-              value={form.match_date}
-              onChange={(e) => set("match_date", e.target.value)}
-              className="w-full pl-9 pr-3 py-2.5 border border-border rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
-            />
-          </div>
-        </div>
+      <Input
+        label="Date & Time"
+        required
+        type="datetime-local"
+        value={form.match_date}
+        onChange={(e) => set("match_date", e.target.value)}
+        error={errors.match_date}
+      />
 
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-            Venue
-          </label>
-          <div className="relative">
-            <MapPin
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
-            />
-            <input
-              value={form.venue}
-              onChange={(e) => set("venue", e.target.value)}
-              placeholder="e.g. Wankhede"
-              className="w-full pl-9 pr-3 py-2.5 border border-border rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
-            />
-          </div>
-        </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Input
+          label="Overs / Innings"
+          required
+          type="number"
+          min={1}
+          max={50}
+          value={form.overs_per_side}
+          onChange={(e) => set("overs_per_side", Number(e.target.value) || 20)}
+          error={errors.overs_per_side}
+        />
+        <Input
+          label="Venue"
+          value={form.venue}
+          onChange={(e) => set("venue", e.target.value)}
+          placeholder="e.g. Wankhede"
+          error={errors.venue}
+        />
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-          Status
+        <label className="block text-sm font-medium text-muted">
+          Status <span className="text-destructive">*</span>
         </label>
         <div className="flex gap-2">
-          {STATUS_OPTIONS.map((opt) => (
+          {getStatusOptions(mode).map((opt) => (
             <button
               key={opt.value}
               type="button"
@@ -298,8 +272,8 @@ export function MatchFormModal({ open, onClose, mode, match }: Props) {
 
       {form.status === "completed" && (
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-            Winner
+          <label className="block text-sm font-medium text-muted">
+            Winner <span className="text-destructive">*</span>
           </label>
           <div className="grid grid-cols-2 gap-2">
             {winnerOptions.map((team) => (
@@ -310,13 +284,20 @@ export function MatchFormModal({ open, onClose, mode, match }: Props) {
                 className={`py-2.5 px-3 rounded-xl text-sm font-semibold border transition-all ${
                   Number(form.winner_team_id) === team.id
                     ? "bg-accent text-white border-accent shadow-sm"
-                    : "bg-white text-foreground border-border hover:border-accent/40"
+                    : errors.winner_team_id
+                      ? "border-destructive text-foreground bg-white"
+                      : "border-border text-foreground bg-white hover:border-accent/40"
                 }`}
               >
                 🏆 {team.name}
               </button>
             ))}
           </div>
+          {errors.winner_team_id && (
+            <p className="text-sm text-destructive mt-1">
+              {errors.winner_team_id}
+            </p>
+          )}
         </div>
       )}
     </FormModal>

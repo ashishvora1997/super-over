@@ -12,7 +12,11 @@ import { Button } from "@/app/components/ui/button";
 import { MultiSelect } from "@/app/components/ui/multi-select";
 import { usePlayerStore } from "@/app/store/players.store";
 import { useTeamStore } from "@/app/store/teams.store";
-import { assignPlayers, setCaptain } from "@/app/services/teams.service";
+import {
+  assignPlayers,
+  setCaptain,
+  setWicketKeeper,
+} from "@/app/services/teams.service";
 import toast from "react-hot-toast";
 import { Team } from "@/app/types/teams.types";
 import { getErrorMessage } from "@/app/utils/error-handler";
@@ -26,13 +30,19 @@ export function AssignPlayersModal({
   onClose: () => void;
   team: Team | null;
 }) {
-  const { players, fetchPlayersList } = usePlayerStore();
-  const { updateCaptainInStore } = useTeamStore();
+  const { playersList, fetchPlayersList } = usePlayerStore();
+  const { updateCaptainInStore, updateWicketKeeperInStore } = useTeamStore();
 
   const [selected, setSelected] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [settingCaptain, setSettingCaptain] = useState<number | null>(null);
   const [currentCaptainId, setCurrentCaptainId] = useState<number | null>(null);
+  const [settingWicketKeeper, setSettingWicketKeeper] = useState<number | null>(
+    null,
+  );
+  const [currentWicketKeeperId, setCurrentWicketKeeperId] = useState<
+    number | null
+  >(null);
 
   useEffect(() => {
     if (open) {
@@ -45,6 +55,7 @@ export function AssignPlayersModal({
       setSelected(team.players.map((p) => p.id));
     }
     setCurrentCaptainId(team?.captain_id ?? null);
+    setCurrentWicketKeeperId(team?.wicket_keeper_id ?? null);
   }, [team]);
 
   const handleSubmit = async () => {
@@ -85,9 +96,23 @@ export function AssignPlayersModal({
     }
   };
 
-  const assignedPlayers = players.filter((p) => selected.includes(p.id));
+  const handleSetWicketKeeper = async (playerId: number) => {
+    if (!team) return;
+    try {
+      setSettingWicketKeeper(playerId);
+      await setWicketKeeper({ team_id: team.id, player_id: playerId });
+      setCurrentWicketKeeperId(playerId);
+      updateWicketKeeperInStore(team.id, playerId);
+      toast.success("Wicket Keeper assigned successfully");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setSettingWicketKeeper(null);
+    }
+  };
 
-  const options = players.map((p) => ({ label: p.name, value: p.id }));
+  const assignedPlayers = playersList.filter((p) => selected.includes(p.id));
+  const options = playersList.map((p) => ({ label: p.name, value: p.id }));
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -150,6 +175,51 @@ export function AssignPlayersModal({
                 {assignedPlayers.find((p) => p.id === currentCaptainId)?.name ??
                   "—"}{" "}
                 is captain
+              </div>
+            )}
+          </div>
+        )}
+
+        {assignedPlayers.length > 0 && (
+          <div className="mt-4">
+            <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+              Wicket Keeper
+            </p>
+            <div className="relative">
+              <select
+                value={currentWicketKeeperId ?? ""}
+                onChange={(e) => {
+                  const playerId = Number(e.target.value);
+                  if (playerId) handleSetWicketKeeper(playerId);
+                }}
+                disabled={settingWicketKeeper !== null}
+                className="w-full pl-4 pr-4 py-2.5 text-sm border border-border rounded-xl bg-white appearance-none focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:opacity-60 transition-colors"
+              >
+                <option value="">Select a wicket keeper...</option>
+                {assignedPlayers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} — {p.role?.replace("_", " ")}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path
+                    d="M2.5 4.5L6 8L9.5 4.5"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            {currentWicketKeeperId && (
+              <div className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                {assignedPlayers.find((p) => p.id === currentWicketKeeperId)
+                  ?.name ?? "—"}{" "}
+                is wicket keeper
               </div>
             )}
           </div>

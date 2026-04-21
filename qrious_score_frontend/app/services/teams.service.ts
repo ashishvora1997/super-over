@@ -15,6 +15,11 @@ export const getTeams = async (
   return res.data;
 };
 
+export const getTeamsList = async (): Promise<SuccessResponse<Team[]>> => {
+  const res = await api.get("/teams/list");
+  return res.data;
+};
+
 export const createTeam = async (
   data: Partial<Team>,
 ): Promise<SuccessResponse<Team>> => {
@@ -50,5 +55,13 @@ export const setCaptain = async (data: {
   player_id: number;
 }): Promise<SuccessResponse<Team>> => {
   const res = await api.post("/teams/set-captain", data);
+  return res.data;
+};
+
+export const setWicketKeeper = async (data: {
+  team_id: number;
+  player_id: number;
+}): Promise<SuccessResponse<Team>> => {
+  const res = await api.post("/teams/set-wicket-keeper", data);
   return res.data;
 };

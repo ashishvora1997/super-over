@@ -5,12 +5,14 @@ import {
   updateTeam,
   deleteTeam,
   setCaptain as setCaptainAPI,
+  getTeamsList,
 } from "../services/teams.service";
 import { Team, TeamState } from "../types/teams.types";
 import { SuccessResponse } from "@/app/types/api.types";
 
 export const useTeamStore = create<TeamState>((set, get) => ({
   teams: [],
+  teamsList: [],
   total: 0,
   loading: false,
   search: "",
@@ -35,6 +37,19 @@ export const useTeamStore = create<TeamState>((set, get) => ({
       });
     } finally {
       set({ loading: false });
+    }
+  },
+
+  fetchTeamsList: async () => {
+    try {
+      const apiResponse = await getTeamsList();
+
+      set({
+        teamsList: apiResponse.data || [],
+      });
+    } catch (error) {
+      console.error("Failed to fetch players list:", error);
+      set({ teamsList: [] });
     }
   },
 
@@ -81,6 +96,14 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     set((state) => ({
       teams: state.teams.map((t) =>
         t.id === teamId ? { ...t, captain_id: playerId } : t,
+      ),
+    }));
+  },
+
+  updateWicketKeeperInStore: (teamId: number, playerId: number) => {
+    set((state) => ({
+      teams: state.teams.map((t) =>
+        t.id === teamId ? { ...t, wicket_keeper_id: playerId } : t,
       ),
     }));
   },
