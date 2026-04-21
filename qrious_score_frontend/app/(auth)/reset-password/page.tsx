@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense } from "react";
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -27,6 +29,14 @@ const resetSchema = z
 type ResetForm = z.infer<typeof resetSchema>;
 
 export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="text-center mt-10">Loading...</div>}>
+      <ResetPasswordContent />
+    </Suspense>
+  );
+}
+
+function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
@@ -74,11 +84,10 @@ export default function ResetPasswordPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-muted mb-1.5">
-            New Password
-          </label>
           <Input
             type="password"
+            label="New Password"
+            required
             {...register("password")}
             placeholder="Enter new password"
             error={errors.password?.message}
@@ -86,11 +95,10 @@ export default function ResetPasswordPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-muted mb-1.5">
-            Confirm Password
-          </label>
           <Input
             type="password"
+            label="Confirm Password"
+            required
             {...register("confirmPassword")}
             placeholder="Confirm your password"
             error={errors.confirmPassword?.message}

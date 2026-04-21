@@ -18,7 +18,8 @@ const loginSchema = z.object({
   email: z
     .string()
     .min(1, "Email is required")
-    .email("Please enter a valid email"),
+    .email("Please enter a valid email")
+    .max(100, "Email cannot exceed 100 characters"),
   password: z
     .string()
     .min(1, "Password is required")
@@ -62,11 +63,10 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-muted mb-1.5">
-              Email
-            </label>
             <Input
               {...register("email")}
+              label="Email"
+              required
               type="email"
               placeholder="Enter your email"
               error={errors.email?.message}
@@ -74,11 +74,10 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <div className="flex justify-between items-center mb-1.5">
-              <label className="text-sm font-medium text-muted">Password</label>
+            <div className="flex justify-end items-center mb-1.5">
               <Link
                 href="/forgot-password"
-                className="text-sm text-primary hover:underline"
+                className="text-sm text-primary hover:underline -mb-6 relative z-10"
               >
                 Forgot?
               </Link>
@@ -86,6 +85,8 @@ export default function LoginPage() {
 
             <Input
               type="password"
+              label="Password"
+              required
               {...register("password")}
               placeholder="Enter your password"
               error={errors.password?.message}

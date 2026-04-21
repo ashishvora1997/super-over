@@ -40,6 +40,9 @@ export class Match extends Model {
   })
   declare status: 'scheduled' | 'live' | 'completed';
 
+  @Column({ allowNull: false, defaultValue: 20 })
+  declare overs_per_side: number;
+
   @ForeignKey(() => Team)
   @Column
   declare winner_team_id: number;

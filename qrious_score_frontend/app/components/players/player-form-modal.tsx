@@ -38,6 +38,7 @@ export function PlayerFormModal({
     bowling_style: "",
   });
 
+  const [errors, setErrors] = useState<Partial<Record<keyof PlayerFormState, string>>>({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -58,13 +59,19 @@ export function PlayerFormModal({
         bowling_style: "",
       });
     }
+    setErrors({});
   }, [open, mode, player]);
 
   const handleSubmit = async () => {
-    if (!form.name || !form.role) {
-      toast.error("Name and role are required");
+    const newErrors: Partial<Record<keyof PlayerFormState, string>> = {};
+    if (!form.name.trim()) newErrors.name = "Player name is required";
+    if (!form.role) newErrors.role = "Role is required";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
+    setErrors({});
 
     try {
       setLoading(true);
@@ -102,14 +109,26 @@ export function PlayerFormModal({
       loading={loading}
     >
       <Input
-        placeholder="Player name"
+        label="Player Name"
+        required
+        placeholder="e.g. Virat Kohli"
         value={form.name}
-        onChange={(e) => setForm({ ...form, name: e.target.value })}
+        onChange={(e) => {
+          setForm({ ...form, name: e.target.value });
+          if (errors.name) setErrors({ ...errors, name: undefined });
+        }}
+        error={errors.name}
       />
 
       <Select
+        label="Role"
+        required
         value={form.role}
-        onChange={(val) => setForm({ ...form, role: val })}
+        onChange={(val) => {
+          setForm({ ...form, role: val });
+          if (errors.role) setErrors({ ...errors, role: undefined });
+        }}
+        error={errors.role}
         options={[
           { label: "Batsman", value: "batsman" },
           { label: "Bowler", value: "bowler" },
@@ -118,13 +137,15 @@ export function PlayerFormModal({
       />
 
       <Input
-        placeholder="Batting style"
+        label="Batting Style"
+        placeholder="e.g. Right-hand bat"
         value={form.batting_style}
         onChange={(e) => setForm({ ...form, batting_style: e.target.value })}
       />
 
       <Input
-        placeholder="Bowling style"
+        label="Bowling Style"
+        placeholder="e.g. Right-arm fast"
         value={form.bowling_style}
         onChange={(e) => setForm({ ...form, bowling_style: e.target.value })}
       />

@@ -16,6 +16,13 @@ export interface Team {
     name: string;
   };
 
+  wicket_keeper_id?: number;
+
+  wicket_keeper?: {
+    id: number;
+    name: string;
+  };
+
   players?: {
     id: number;
     name: string;
@@ -29,6 +36,7 @@ export interface Team {
 
 export interface TeamState {
   teams: Team[];
+  teamsList: Team[];
   total: number;
   loading: boolean;
   search: string;
@@ -36,6 +44,7 @@ export interface TeamState {
   pageSize: number;
 
   fetchTeams: (search?: string, page?: number) => Promise<void>;
+  fetchTeamsList: () => Promise<void>;
 
   createTeam: (data: Partial<Team>) => Promise<SuccessResponse<Team>>;
   updateTeam: (
@@ -45,4 +54,5 @@ export interface TeamState {
   deleteTeam: (id: number) => Promise<SuccessResponse<null>>;
 
   updateCaptainInStore: (team_id: number, player_id: number) => void;
+  updateWicketKeeperInStore: (team_id: number, player_id: number) => void;
 }

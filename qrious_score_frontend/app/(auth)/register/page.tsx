@@ -16,12 +16,18 @@ import { Button } from "@/app/components/ui/button";
 const registerSchema = z.object({
   name: z
     .string()
-    .min(1, "Name is required")
-    .min(2, "Name must be at least 2 characters"),
+    .min(2, "Name must be at least 2 characters")
+    .transform((val) => val.trim())
+    .refine((val) => val.length > 0, {
+      message: "Name cannot be empty or just spaces",
+    }),
+
   email: z
     .string()
     .min(1, "Email is required")
-    .email("Please enter a valid email address"),
+    .email("Please enter a valid email address")
+    .max(100, "Email cannot exceed 100 characters"),
+
   password: z
     .string()
     .min(1, "Password is required")
@@ -67,22 +73,20 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-muted mb-1.5">
-                Name
-              </label>
               <Input
                 {...register("name")}
+                label="Full Name"
+                required
                 placeholder="Enter your full name"
                 error={errors.name?.message}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-muted mb-1.5">
-                Email
-              </label>
               <Input
                 {...register("email")}
+                label="Email"
+                required
                 type="email"
                 placeholder="Enter your email"
                 error={errors.email?.message}
@@ -90,11 +94,10 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-muted mb-1.5">
-                Password
-              </label>
               <Input
                 type="password"
+                label="Password"
+                required
                 {...register("password")}
                 placeholder="Create a strong password"
                 error={errors.password?.message}

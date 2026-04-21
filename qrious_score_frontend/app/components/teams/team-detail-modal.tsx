@@ -83,6 +83,13 @@ export function TeamDetailModal({ team, onClose }: TeamDetailModalProps) {
                 value={team.captain.name}
               />
             )}
+            {team.wicket_keeper && (
+              <Detail
+                icon={<Users size={14} />}
+                label="Wicket Keeper"
+                value={team.wicket_keeper.name}
+              />
+            )}
           </div>
         </div>
 

@@ -9,6 +9,7 @@ import { Match } from "@/app/types/match.types";
 import toast from "react-hot-toast";
 import { getErrorMessage } from "@/app/utils/error-handler";
 import { useTossStore } from "@/app/store/toss.store";
+import { useInningsStore } from "@/app/store/innings.store";
 import { CreateTossPayload, TossElection } from "@/app/types/toss.types";
 
 interface Props {
@@ -17,6 +18,7 @@ interface Props {
 
 export function TossSection({ match }: Props) {
   const { toss, recordToss } = useTossStore();
+  const { fetchInnings } = useInningsStore();
 
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -37,6 +39,7 @@ export function TossSection({ match }: Props) {
         elected_to: elected,
       };
       await recordToss(match.id, payload);
+      await fetchInnings(match.id);
       toast.success("Toss recorded!");
       setOpen(false);
     } catch (err: unknown) {

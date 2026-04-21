@@ -7,6 +7,7 @@ import { Tournament, TournamentStatus } from "@/app/types/tournaments.types";
 import toast from "react-hot-toast";
 import { Calendar, MapPin, Trophy } from "lucide-react";
 import { getErrorMessage } from "@/app/utils/error-handler";
+import { Input } from "../ui/input";
 
 interface Props {
   open: boolean;
@@ -15,11 +16,16 @@ interface Props {
   tournament?: Tournament | null;
 }
 
-const STATUS_OPTIONS: { value: TournamentStatus; label: string }[] = [
-  { value: "upcoming", label: "Upcoming" },
-  { value: "ongoing", label: "Ongoing" },
-  //   { value: "completed", label: "Completed" },
-];
+const getStatusOptions = (mode: "create" | "edit") => {
+  const options: { value: TournamentStatus; label: string }[] = [
+    { value: "upcoming", label: "Upcoming" },
+    { value: "ongoing", label: "Ongoing" },
+  ];
+  if (mode === "edit") {
+    options.push({ value: "completed", label: "Completed" });
+  }
+  return options;
+};
 
 const EMPTY_FORM = {
   name: "",
@@ -37,10 +43,13 @@ export function TournamentFormModal({
 }: Props) {
   const { createTournament, updateTournament } = useTournamentStore();
   const [form, setForm] = useState(EMPTY_FORM);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (mode === "edit" && tournament) {
+      console.log("Inside edit...");
+      console.log("tournament.location::", tournament.location);
       setForm({
         name: tournament.name || "",
         location: tournament.location || "",
@@ -48,20 +57,28 @@ export function TournamentFormModal({
         end_date: tournament.end_date?.slice(0, 10) || "",
         status: tournament.status || "upcoming",
       });
-    } else {
-      setForm(EMPTY_FORM);
     }
+    setErrors({});
   }, [mode, tournament, open]);
 
-  const set = (key: keyof typeof EMPTY_FORM, value: string) =>
+  const set = (key: keyof typeof EMPTY_FORM, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    if (errors[key]) setErrors((prev) => ({ ...prev, [key]: "" }));
+  };
 
   const handleSubmit = async () => {
-    if (!form.name.trim()) return toast.error("Name is required");
-    if (!form.start_date) return toast.error("Start date is required");
-    if (!form.end_date) return toast.error("End date is required");
-    if (form.end_date < form.start_date)
-      return toast.error("End date must be after start date");
+    const newErrors: Record<string, string> = {};
+    if (!form.name.trim()) newErrors.name = "Name is required";
+    if (!form.start_date) newErrors.start_date = "Start date is required";
+    if (!form.end_date) newErrors.end_date = "End date is required";
+    else if (form.end_date < form.start_date)
+      newErrors.end_date = "End date must be after start date";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    setErrors({});
 
     try {
       setLoading(true);
@@ -91,78 +108,44 @@ export function TournamentFormModal({
       loading={loading}
     >
       <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-          Tournament Name
-        </label>
-        <div className="relative">
-          <Trophy
-            size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
-          />
-          <input
-            value={form.name}
-            onChange={(e) => set("name", e.target.value)}
-            placeholder="e.g. IPL 2025"
-            className="w-full pl-9 pr-4 py-2.5 border border-border rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
-          />
-        </div>
+        <Input
+          label="Tournament Name"
+          required
+          value={form.name}
+          onChange={(e) => set("name", e.target.value)}
+          placeholder="e.g. IPL 2025"
+          error={errors.name}
+        />
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-          Location
-        </label>
-        <div className="relative">
-          <MapPin
-            size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
-          />
-          <input
-            value={form.location}
-            onChange={(e) => set("location", e.target.value)}
-            placeholder="e.g. Mumbai, India"
-            className="w-full pl-9 pr-4 py-2.5 border border-border rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
-          />
-        </div>
+        <Input
+          label="Location"
+          value={form.location}
+          onChange={(e) => set("location", e.target.value)}
+          placeholder="e.g. Mumbai, India"
+          error={errors.location}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-            Start Date
-          </label>
-          <div className="relative">
-            <Calendar
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
-            />
-            <input
-              type="date"
-              value={form.start_date}
-              onChange={(e) => set("start_date", e.target.value)}
-              className="w-full pl-9 pr-3 py-2.5 border border-border rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-            End Date
-          </label>
-          <div className="relative">
-            <Calendar
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
-            />
-            <input
-              type="date"
-              value={form.end_date}
-              min={form.start_date || undefined}
-              onChange={(e) => set("end_date", e.target.value)}
-              className="w-full pl-9 pr-3 py-2.5 border border-border rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
-            />
-          </div>
-        </div>
+        <Input
+          label="Start Date"
+          required
+          type="date"
+          value={form.start_date}
+          onChange={(e) => set("start_date", e.target.value)}
+          error={errors.start_date}
+        />
+        <Input
+          label="End Date"
+          required
+          type="date"
+          value={form.end_date}
+          min={form.start_date || undefined}
+          onChange={(e) => set("end_date", e.target.value)}
+          error={errors.end_date}
+        />
       </div>
 
       <div className="space-y-1.5">
@@ -170,7 +153,7 @@ export function TournamentFormModal({
           Status
         </label>
         <div className="flex gap-2">
-          {STATUS_OPTIONS.map((opt) => (
+          {getStatusOptions(mode).map((opt) => (
             <button
               key={opt.value}
               type="button"

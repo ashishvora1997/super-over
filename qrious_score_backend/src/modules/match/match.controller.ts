@@ -35,6 +35,11 @@ export class MatchController {
     );
   }
 
+  @Get('list')
+  findMatchesList() {
+    return this.matchService.findAllMatchesList();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: number) {
     return this.matchService.findOne(Number(id));

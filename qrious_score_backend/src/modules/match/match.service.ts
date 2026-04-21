@@ -49,9 +49,9 @@ export class MatchService {
       throw new NotFoundException('Tournament not found');
     }
 
-    if (tournament.status === 'completed') {
+    if (tournament.status !== 'ongoing') {
       throw new BadRequestException(
-        'Cannot create match for completed tournament',
+        'Cannot create match unless tournament is Live',
       );
     }
 
@@ -173,6 +173,14 @@ export class MatchService {
     return successResponse('Matches retrieved successfully', matches);
   }
 
+  async findAllMatchesList(): Promise<SuccessResponse<Match[]>> {
+    const matches = await this.matchModel.findAll({
+      order: [['match_date', 'DESC']],
+    });
+
+    return successResponse('Matches retrieved successfully', matches);
+  }
+
   async update(
     id: number,
     data: UpdateMatchDto,
@@ -197,7 +205,7 @@ export class MatchService {
       const allowedTransitions = VALID_STATUS_TRANSITIONS[match.status] ?? [];
       if (!allowedTransitions.includes(data.status)) {
         throw new BadRequestException(
-          `Invalid status transition from '${match.status}' to '${data.status}'. Allowed: ${allowedTransitions.join(', ') || 'none'}`,
+          `Invalid status transition from '${match.status}' to '${data.status}'.`,
         );
       }
     }

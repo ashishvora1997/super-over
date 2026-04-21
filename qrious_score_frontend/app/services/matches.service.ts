@@ -15,6 +15,11 @@ export const getMatches = async (
   return res.data;
 };
 
+export const getMatchesList = async (): Promise<SuccessResponse<Match[]>> => {
+  const res = await api.get("/matches/list");
+  return res.data;
+};
+
 export const getMatchById = async (
   id: number,
 ): Promise<SuccessResponse<Match>> => {

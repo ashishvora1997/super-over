@@ -35,41 +35,47 @@ export class InningsService {
   private async validateBattingPlayers(
     battingTeamId: number,
     bowlingTeamId: number,
-    strikerId: number,
-    nonStrikerId: number,
-    bowlerId: number,
+    strikerId: number | null,
+    nonStrikerId: number | null,
+    bowlerId: number | null,
   ) {
-    if (strikerId === nonStrikerId) {
+    if (strikerId && nonStrikerId && strikerId === nonStrikerId) {
       throw new BadRequestException(
         'Striker and non-striker cannot be the same player',
       );
     }
 
-    const strikerInTeam = await this.teamPlayerModel.findOne({
-      where: { team_id: battingTeamId, player_id: strikerId },
-    });
-    if (!strikerInTeam) {
-      throw new BadRequestException(
-        'Striker does not belong to the batting team',
-      );
+    if (strikerId) {
+      const strikerInTeam = await this.teamPlayerModel.findOne({
+        where: { team_id: battingTeamId, player_id: strikerId },
+      });
+      if (!strikerInTeam) {
+        throw new BadRequestException(
+          'Striker does not belong to the batting team',
+        );
+      }
     }
 
-    const nonStrikerInTeam = await this.teamPlayerModel.findOne({
-      where: { team_id: battingTeamId, player_id: nonStrikerId },
-    });
-    if (!nonStrikerInTeam) {
-      throw new BadRequestException(
-        'Non-striker does not belong to the batting team',
-      );
+    if (nonStrikerId) {
+      const nonStrikerInTeam = await this.teamPlayerModel.findOne({
+        where: { team_id: battingTeamId, player_id: nonStrikerId },
+      });
+      if (!nonStrikerInTeam) {
+        throw new BadRequestException(
+          'Non-striker does not belong to the batting team',
+        );
+      }
     }
 
-    const bowlerInTeam = await this.teamPlayerModel.findOne({
-      where: { team_id: bowlingTeamId, player_id: bowlerId },
-    });
-    if (!bowlerInTeam) {
-      throw new BadRequestException(
-        'Bowler does not belong to the bowling team',
-      );
+    if (bowlerId) {
+      const bowlerInTeam = await this.teamPlayerModel.findOne({
+        where: { team_id: bowlingTeamId, player_id: bowlerId },
+      });
+      if (!bowlerInTeam) {
+        throw new BadRequestException(
+          'Bowler does not belong to the bowling team',
+        );
+      }
     }
   }
 

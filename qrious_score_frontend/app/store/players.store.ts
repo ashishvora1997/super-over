@@ -10,6 +10,7 @@ import { Player, PlayerState } from "../types/players.types";
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
   players: [],
+  playersList: [],
   total: 0,
   loading: false,
   search: "",
@@ -46,19 +47,15 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   fetchPlayersList: async () => {
-    set({ loading: true });
-
     try {
       const apiResponse = await getPlayersList();
 
       set({
-        players: apiResponse.data || [],
+        playersList: apiResponse.data || [],
       });
     } catch (error) {
-      console.error("Failed to fetch players for selection:", error);
-      set({ players: [] });
-    } finally {
-      set({ loading: false });
+      console.error("Failed to fetch players list:", error);
+      set({ playersList: [] });
     }
   },
 

@@ -13,6 +13,7 @@ export interface Player {
 
 export interface PlayerState {
   players: Player[];
+  playersList: Player[];
   total: number;
   loading: boolean;
   search: string;

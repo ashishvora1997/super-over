@@ -18,6 +18,7 @@ import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { SetCaptainDto } from './dtos/set-captain.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
+import { SetWicketKeeperDto } from './dtos/set-wicket-keeper.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('teams')
@@ -33,6 +34,11 @@ export class TeamsController {
   @Get()
   findAll(@Query() query: FindTeamsQuery) {
     return this.teamsService.findAll(query);
+  }
+
+  @Get('list')
+  async findAllTeamsList() {
+    return this.teamsService.findAllTeamsList();
   }
 
   @Get(':id')
@@ -62,5 +68,11 @@ export class TeamsController {
   @Roles('admin', 'scorer')
   setCap(@Body() data: SetCaptainDto) {
     return this.teamsService.setCaptain(data);
+  }
+
+  @Post('set-wicket-keeper')
+  @Roles('admin', 'scorer')
+  setWicketKeeper(@Body() data: SetWicketKeeperDto) {
+    return this.teamsService.setWicketKeeper(data);
   }
 }

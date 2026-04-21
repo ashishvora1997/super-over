@@ -14,7 +14,8 @@ const forgotSchema = z.object({
   email: z
     .string()
     .min(1, "Email is required")
-    .email("Please enter a valid email"),
+    .email("Please enter a valid email")
+    .max(100, "Email cannot exceed 100 characters"),
 });
 
 type ForgotForm = z.infer<typeof forgotSchema>;
@@ -52,11 +53,10 @@ export default function ForgotPasswordPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-muted mb-1.5">
-            Email
-          </label>
           <Input
             {...register("email")}
+            label="Email"
+            required
             type="email"
             placeholder="Enter your email"
             error={errors.email?.message}

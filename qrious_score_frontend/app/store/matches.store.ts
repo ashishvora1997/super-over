@@ -1,6 +1,6 @@
 import { create } from "zustand";
+import { MatchState } from "@/app/types/match.types";
 import {
-  Match,
   CreateMatchPayload,
   UpdateMatchPayload,
 } from "@/app/types/match.types";
@@ -9,22 +9,12 @@ import {
   createMatch,
   updateMatch,
   deleteMatch,
+  getMatchesList,
 } from "@/app/services/matches.service";
-
-interface MatchState {
-  matches: Match[];
-  loading: boolean;
-  tournamentFilter: number | undefined;
-
-  fetchMatches: (tournament_id?: number) => Promise<void>;
-  createMatch: (payload: CreateMatchPayload) => Promise<void>;
-  updateMatch: (payload: UpdateMatchPayload) => Promise<void>;
-  deleteMatch: (id: number) => Promise<void>;
-  setTournamentFilter: (id: number | undefined) => void;
-}
 
 export const useMatchStore = create<MatchState>((set, get) => ({
   matches: [],
+  matchesList: [],
   loading: false,
   tournamentFilter: undefined,
 
@@ -32,10 +22,8 @@ export const useMatchStore = create<MatchState>((set, get) => ({
     set({ loading: true });
 
     try {
-      const response = await getMatches(tournament_id);
-      set({
-        matches: Array.isArray(response.data) ? response.data : [],
-      });
+      const res = await getMatches(tournament_id);
+      set({ matches: Array.isArray(res.data) ? res.data : [] });
     } catch (error) {
       console.error("Failed to fetch matches:", error);
       set({ matches: [] });
@@ -44,19 +32,51 @@ export const useMatchStore = create<MatchState>((set, get) => ({
     }
   },
 
+  fetchMatchesList: async () => {
+    try {
+      const res = await getMatchesList();
+      set({ matchesList: Array.isArray(res.data) ? res.data : [] });
+    } catch (error) {
+      console.error("Failed to fetch matches list:", error);
+      set({ matchesList: [] });
+    }
+  },
+
   createMatch: async (payload: CreateMatchPayload) => {
-    await createMatch(payload);
-    await get().fetchMatches(get().tournamentFilter);
+    set({ loading: true });
+
+    try {
+      await createMatch(payload);
+      await get().fetchMatches(get().tournamentFilter);
+    } catch (error) {
+      throw error;
+    } finally {
+      set({ loading: false });
+    }
   },
 
   updateMatch: async (payload: UpdateMatchPayload) => {
-    await updateMatch(payload);
-    await get().fetchMatches(get().tournamentFilter);
+    set({ loading: true });
+
+    try {
+      await updateMatch(payload);
+      await get().fetchMatches(get().tournamentFilter);
+    } catch (error) {
+      throw error;
+    } finally {
+      set({ loading: false });
+    }
   },
 
   deleteMatch: async (id: number) => {
-    await deleteMatch(id);
-    await get().fetchMatches(get().tournamentFilter);
+    set({ loading: true });
+
+    try {
+      await deleteMatch(id);
+      await get().fetchMatches(get().tournamentFilter);
+    } finally {
+      set({ loading: false });
+    }
   },
 
   setTournamentFilter: (id: number | undefined) => {

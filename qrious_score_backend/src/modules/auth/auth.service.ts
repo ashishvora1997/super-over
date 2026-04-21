@@ -111,10 +111,7 @@ export class AuthService {
     const user = await this.usersService.findByEmail(data.email);
 
     if (!user) {
-      return successResponse(
-        'If the email exists, a reset link has been sent',
-        null,
-      );
+      throw new BadRequestException('Email does not exist');
     }
 
     const rawToken = crypto.randomBytes(32).toString('hex');
@@ -140,10 +137,7 @@ export class AuthService {
 
     await this.emailService.sendPasswordResetEmail(user.email, resetLink);
 
-    return successResponse(
-      'If the email exists, a reset link has been sent',
-      null,
-    );
+    return successResponse('Password reset link sent to your email', null);
   }
 
   async resetPassword(data: ResetPasswordDto): Promise<SuccessResponse<null>> {
