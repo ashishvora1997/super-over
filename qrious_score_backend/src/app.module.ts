@@ -11,6 +11,7 @@ import { TournamentModule } from './modules/tournament/tournament.module';
 import { MatchModule } from './modules/match/match.module';
 import { TossModule } from './modules/toss/toss.module';
 import { InningsModule } from './modules/innings/innings.module';
+import { BallEventModule } from './modules/ball-event/ball-event.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { InningsModule } from './modules/innings/innings.module';
     MatchModule,
     TossModule,
     InningsModule,
+    BallEventModule,
   ],
   controllers: [AppController],
   providers: [AppService],
