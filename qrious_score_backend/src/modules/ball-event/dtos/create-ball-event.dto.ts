@@ -9,6 +9,23 @@ import {
   ValidateIf,
 } from 'class-validator';
 
+export enum WicketType {
+  BOWLED = 'bowled',
+  CAUGHT = 'caught',
+  LBW = 'lbw',
+  RUN_OUT = 'run_out',
+  STUMPED = 'stumped',
+  HIT_WICKET = 'hit_wicket',
+  RETIRED_HURT = 'retired_hurt',
+}
+
+export enum ExtraType {
+  WIDE = 'wide',
+  NO_BALL = 'no_ball',
+  BYE = 'bye',
+  LEG_BYE = 'leg_bye',
+}
+
 export class CreateBallEventDto {
   @IsNumber()
   @IsNotEmpty()
@@ -31,8 +48,8 @@ export class CreateBallEventDto {
   runs_bat: number;
 
   @IsOptional()
-  @IsEnum(['wide', 'no_ball', 'bye', 'leg_bye'])
-  extra_type?: 'wide' | 'no_ball' | 'bye' | 'leg_bye';
+  @IsEnum(ExtraType)
+  extra_type?: ExtraType;
 
   @IsOptional()
   @IsNumber()
@@ -45,23 +62,8 @@ export class CreateBallEventDto {
 
   @ValidateIf((o) => o.is_wicket === true)
   @IsNotEmpty({ message: 'wicket_type is required when is_wicket is true' })
-  @IsEnum([
-    'bowled',
-    'caught',
-    'lbw',
-    'run_out',
-    'stumped',
-    'hit_wicket',
-    'retired_hurt',
-  ])
-  wicket_type?:
-    | 'bowled'
-    | 'caught'
-    | 'lbw'
-    | 'run_out'
-    | 'stumped'
-    | 'hit_wicket'
-    | 'retired_hurt';
+  @IsEnum(WicketType)
+  wicket_type?: WicketType;
 
   @ValidateIf((o) => o.is_wicket === true)
   @IsNotEmpty({
