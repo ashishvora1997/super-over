@@ -6,9 +6,9 @@ import { Player } from 'src/modules/players/models/players.model';
 export class TeamPlayer extends Model {
   @ForeignKey(() => Team)
   @Column
-  team_id!: number;
+  declare team_id: number;
 
   @ForeignKey(() => Player)
   @Column
-  player_id!: number;
+  declare player_id: number;
 }

@@ -8,6 +8,12 @@ interface GetTeamsParams {
   limit?: number;
 }
 
+export interface BulkUploadResult {
+  success_count: number;
+  failed_count: number;
+  errors: { row: number; error: string }[];
+}
+
 export const getTeams = async (
   params?: GetTeamsParams,
 ): Promise<SuccessResponse<Team[]>> => {
@@ -63,5 +69,16 @@ export const setWicketKeeper = async (data: {
   player_id: number;
 }): Promise<SuccessResponse<Team>> => {
   const res = await api.post("/teams/set-wicket-keeper", data);
+  return res.data;
+};
+
+export const bulkUploadTeams = async (
+  file: File,
+): Promise<SuccessResponse<BulkUploadResult>> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await api.post("/teams/bulk-upload", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return res.data;
 };

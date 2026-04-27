@@ -19,6 +19,11 @@ import {
 import { SuccessResponse } from 'src/common/types/response.type';
 import { getPagination } from 'src/common/utils/pagination';
 import { SetCaptainDto } from './dtos/set-captain.dto';
+import {
+  FieldRule,
+  validateCSVRow,
+} from 'src/common/utils/csv-row-validator.util';
+import { parseUploadedFile } from 'src/common/utils/csv-parser.util';
 
 @Injectable()
 export class TeamsService {
@@ -246,5 +251,72 @@ export class TeamsService {
     });
 
     return successResponse('Wicket keeper assigned successfully', updatedTeam!);
+  }
+
+  async handleBulkUpload(file: Express.Multer.File) {
+    const expectedHeaders = [
+      'name',
+      'short_name',
+      'city',
+      'jersey_color',
+      'home_ground',
+      'founded_year',
+      'description',
+    ];
+
+    const rows = parseUploadedFile(
+      file.buffer,
+      file.mimetype,
+      file.originalname,
+      expectedHeaders,
+    );
+
+    const rules: FieldRule[] = [
+      { field: 'name', required: true, type: 'string' },
+      { field: 'short_name', required: true, type: 'string' },
+      { field: 'city', required: false, type: 'string' },
+      { field: 'jersey_color', required: false, type: 'string' },
+      { field: 'home_ground', required: false, type: 'string' },
+      { field: 'founded_year', required: false, type: 'number' },
+      { field: 'description', required: false, type: 'string' },
+    ];
+
+    const errors: { row: number; error: string }[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const rowNumber = i + 2;
+      const error = validateCSVRow(rows[i], rules);
+      if (error) {
+        errors.push({ row: rowNumber, error });
+      }
+    }
+
+    if (errors.length > 0) {
+      return successResponse('Validation failed. No teams were imported.', {
+        success_count: 0,
+        failed_count: errors.length,
+        errors,
+      });
+    }
+
+    const teamsToInsert = rows.map((row) => ({
+      name: row.name.trim(),
+      short_name: row.short_name.trim(),
+      city: row.city?.trim() || null,
+      jersey_color: row.jersey_color?.trim() || null,
+      home_ground: row.home_ground?.trim() || null,
+      founded_year: row.founded_year ? Number(row.founded_year) : null,
+      description: row.description?.trim() || null,
+    }));
+
+    await this.teamModel.sequelize.transaction(async (t) => {
+      await this.teamModel.bulkCreate(teamsToInsert, { transaction: t });
+    });
+
+    return successResponse('Bulk upload completed successfully.', {
+      success_count: teamsToInsert.length,
+      failed_count: 0,
+      errors: [],
+    });
   }
 }

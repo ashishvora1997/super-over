@@ -55,11 +55,16 @@ export class MatchService {
       );
     }
 
+    const matchDate = new Date(match_date);
+    const startDate = new Date(tournament.start_date);
+    const endDate = new Date(tournament.end_date);
+
+    endDate.setHours(23, 59, 59, 999);
+
     if (
       tournament.start_date &&
       tournament.end_date &&
-      (new Date(match_date) < new Date(tournament.start_date) ||
-        new Date(match_date) > new Date(tournament.end_date))
+      (matchDate < startDate || matchDate > endDate)
     ) {
       throw new BadRequestException(
         'Match date must be within tournament duration',
