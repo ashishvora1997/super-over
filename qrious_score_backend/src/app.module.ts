@@ -12,6 +12,8 @@ import { MatchModule } from './modules/match/match.module';
 import { TossModule } from './modules/toss/toss.module';
 import { InningsModule } from './modules/innings/innings.module';
 import { BallEventModule } from './modules/ball-event/ball-event.module';
+import { PointsTableModule } from './modules/points-table/points-table.module';
+import { ScoringGatewayModule } from './modules/scoring-gateway/scoring-gateway.module';
 
 @Module({
   imports: [
@@ -33,6 +35,7 @@ import { BallEventModule } from './modules/ball-event/ball-event.module';
       }),
     }),
 
+    ScoringGatewayModule,
     UsersModule,
     AuthModule,
     PlayersModule,
@@ -42,8 +45,10 @@ import { BallEventModule } from './modules/ball-event/ball-event.module';
     TossModule,
     InningsModule,
     BallEventModule,
+    PointsTableModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
+
