@@ -2,6 +2,7 @@
 
 import { RoleGuard } from "@/app/components/auth/role-guard";
 import { PlayerFormModal } from "@/app/components/players/player-form-modal";
+import { BulkUploadModal } from "@/app/components/ui/modal/bulk-upload-modal";
 import { Button } from "@/app/components/ui/button";
 import { ConfirmModal } from "@/app/components/ui/modal/confirm-modal";
 import { Table } from "@/app/components/ui/Table";
@@ -10,9 +11,13 @@ import { useAuthStore } from "@/app/store/auth.store";
 import { usePlayerStore } from "@/app/store/players.store";
 import { Player } from "@/app/types/players.types";
 import { Column } from "@/app/types/table.types";
-import { formatRole, toTitleCase } from "@/app/utils/format";
+import {
+  formatRole,
+  formatBattingStyle,
+  formatBowlingStyle,
+} from "@/app/utils/format";
 import { hasRole } from "@/app/utils/permissions";
-import { Search, UserPlus, Pencil, Trash2 } from "lucide-react";
+import { Search, UserPlus, Pencil, Trash2, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export default function PlayersPage() {
@@ -25,17 +30,18 @@ export default function PlayersPage() {
     loading,
     deletePlayer,
   } = usePlayerStore();
+
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"create" | "edit">("create");
   const [searchInput, setSearchInput] = useState("");
   const [selectedRole, setSelectedRole] = useState("all");
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
 
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
 
   const debouncedSearch = useDebounce(searchInput, 500);
-
   const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
@@ -65,7 +71,6 @@ export default function PlayersPage() {
 
   const handleDeleteConfirm = async () => {
     if (!playerToDelete) return;
-
     try {
       await deletePlayer(playerToDelete.id);
       setDeleteOpen(false);
@@ -76,25 +81,17 @@ export default function PlayersPage() {
   };
 
   const baseColumns: Column<Player>[] = [
-    {
-      key: "name",
-      title: "Player",
-      render: (p) => p.name,
-    },
-    {
-      key: "role",
-      title: "Role",
-      render: (p) => formatRole(p.role),
-    },
+    { key: "name", title: "Player", render: (p) => p.name },
+    { key: "role", title: "Role", render: (p) => formatRole(p.role) },
     {
       key: "batting_style",
       title: "Batting",
-      render: (p) => toTitleCase(p.batting_style),
+      render: (p) => formatBattingStyle(p.batting_style),
     },
     {
       key: "bowling_style",
       title: "Bowling",
-      render: (p) => toTitleCase(p.bowling_style),
+      render: (p) => formatBowlingStyle(p.bowling_style),
     },
   ];
 
@@ -115,7 +112,6 @@ export default function PlayersPage() {
               >
                 <Pencil size={16} />
               </button>
-
               {hasRole(user?.role, ["admin"]) && (
                 <button
                   className="p-2 rounded-lg hover:bg-destructive/10 text-destructive"
@@ -150,13 +146,23 @@ export default function PlayersPage() {
         </div>
 
         <RoleGuard allowedRoles={["admin", "scorer"]}>
-          <Button
-            onClick={handleCreate}
-            className="inline-flex items-center gap-2"
-          >
-            <UserPlus size={16} />
-            Add Player
-          </Button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setBulkUploadOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-white text-sm font-semibold text-muted hover:border-primary hover:text-primary transition-colors"
+            >
+              <Upload size={15} />
+              Bulk Upload
+            </button>
+
+            <Button
+              onClick={handleCreate}
+              className="inline-flex items-center gap-2"
+            >
+              <UserPlus size={16} />
+              Add Player
+            </Button>
+          </div>
         </RoleGuard>
       </div>
 
@@ -213,6 +219,19 @@ export default function PlayersPage() {
         onClose={() => setOpen(false)}
         mode={mode}
         player={selectedPlayer}
+      />
+
+      <BulkUploadModal
+        open={bulkUploadOpen}
+        onClose={() => setBulkUploadOpen(false)}
+        title="Bulk Upload Players"
+        description="Import multiple players from a CSV or XLSX file"
+        templateConfig={{
+          filename: "players_template.csv",
+          headers: "name,role,batting_style,bowling_style",
+          sampleRows: ["Virat Kohli,batsman,RHB,"],
+        }}
+        uploadFn={(file) => usePlayerStore.getState().bulkUpload(file)}
       />
 
       <ConfirmModal

@@ -28,13 +28,13 @@ export class Player extends Model {
   declare role: string;
 
   @Column({
-    type: DataType.STRING,
+    type: DataType.ENUM('RHB', 'LHB'),
     allowNull: true,
   })
   declare batting_style: string;
 
   @Column({
-    type: DataType.STRING,
+    type: DataType.ENUM('RAF', 'LAF', 'OFF', 'LAO', 'LEG'),
     allowNull: true,
   })
   declare bowling_style: string;

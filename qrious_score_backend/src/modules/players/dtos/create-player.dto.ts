@@ -10,10 +10,14 @@ export class CreatePlayerDto {
   role!: string;
 
   @IsOptional()
-  @IsString()
+  @IsIn(['RHB', 'LHB'], {
+    message: 'Batting style must be one of: RHB, LHB',
+  })
   batting_style?: string;
 
   @IsOptional()
-  @IsString()
+  @IsIn(['RAF', 'LAF', 'OFF', 'LAO', 'LEG'], {
+    message: 'Bowling style must be one of: RAF, LAF, OFF, LAO, LEG',
+  })
   bowling_style?: string;
 }

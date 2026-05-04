@@ -9,6 +9,7 @@ import {
   Shield,
   MapPin,
   Users,
+  Upload,
 } from "lucide-react";
 
 import { Table } from "@/app/components/ui/Table";
@@ -24,6 +25,7 @@ import { TeamDetailModal } from "@/app/components/teams/team-detail-modal";
 import { RoleGuard } from "@/app/components/auth/role-guard";
 import { useAuthStore } from "@/app/store/auth.store";
 import { hasRole } from "@/app/utils/permissions";
+import { BulkUploadModal } from "@/app/components/ui/modal/bulk-upload-modal";
 
 function getTeamColor(name: string) {
   const colors = [
@@ -83,8 +85,16 @@ function TeamAvatar({
 }
 
 export default function TeamsPage() {
-  const { teams, total, page, pageSize, fetchTeams, deleteTeam, loading } =
-    useTeamStore();
+  const {
+    teams,
+    total,
+    page,
+    pageSize,
+    fetchTeams,
+    deleteTeam,
+    bulkUpload,
+    loading,
+  } = useTeamStore();
   const user = useAuthStore((s) => s.user);
 
   const [open, setOpen] = useState(false);
@@ -97,6 +107,7 @@ export default function TeamsPage() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [teamToAssign, setTeamToAssign] = useState<Team | null>(null);
   const [detailTeam, setDetailTeam] = useState<Team | null>(null);
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
 
   useEffect(() => {
     fetchTeams("", 1);
@@ -249,14 +260,24 @@ export default function TeamsPage() {
         </div>
 
         <RoleGuard allowedRoles={["admin", "scorer"]}>
-          <button
-            onClick={handleCreate}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-semibold rounded-xl shadow-md shadow-primary/25 transition-all active:scale-95"
-          >
-            <Plus size={16} />
-            <span className="hidden sm:inline">Add Team</span>
-            <span className="sm:hidden">Add</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setBulkUploadOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-white text-sm font-semibold text-muted hover:border-primary hover:text-primary transition-colors"
+            >
+              <Upload size={15} />
+              Bulk Upload
+            </button>
+
+            <button
+              onClick={handleCreate}
+              className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-dark text-white text-sm font-semibold rounded-xl shadow-md shadow-primary/25 transition-all active:scale-95"
+            >
+              <Plus size={16} />
+              <span className="hidden sm:inline">Add Team</span>
+              <span className="sm:hidden">Add</span>
+            </button>
+          </div>
         </RoleGuard>
       </div>
 
@@ -427,6 +448,23 @@ export default function TeamsPage() {
         description={`Are you sure you want to delete "${teamToDelete?.name}"? This action cannot be undone.`}
         confirmText="Delete"
       />
+
+      <BulkUploadModal
+        open={bulkUploadOpen}
+        onClose={() => setBulkUploadOpen(false)}
+        title="Bulk Upload Teams"
+        description="Import multiple teams from a CSV or XLSX file"
+        templateConfig={{
+          filename: "teams_template.csv",
+          headers:
+            "name,short_name,city,jersey_color,home_ground,founded_year,description",
+          sampleRows: [
+            "Mumbai Indians,MI,Mumbai,Blue,Wankhede Stadium,2008,Five-time IPL champions",
+          ],
+        }}
+        uploadFn={bulkUpload}
+      />
+
       <AssignPlayersModal
         open={assignOpen}
         onClose={() => setAssignOpen(false)}

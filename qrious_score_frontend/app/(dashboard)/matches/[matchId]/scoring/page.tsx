@@ -665,6 +665,16 @@ function PlayerAssignModal({
   );
 }
 
+function getMissingPlayersDescription(inn: Innings | null): string | null {
+  if (!inn) return null;
+  const missing: string[] = [];
+  if (!inn.striker_id) missing.push("striker");
+  if (!inn.non_striker_id) missing.push("non-striker");
+  if (!inn.bowler_id) missing.push("bowler");
+  if (missing.length === 0) return null;
+  return missing.join(", ");
+}
+
 export default function ScoringPage() {
   const params = useParams();
   const router = useRouter();
@@ -762,6 +772,16 @@ export default function ScoringPage() {
 
   const inn = currentInnings || activeInnings;
 
+  const isScoringReady =
+    inn?.status === "in_progress" &&
+    inn?.striker_id !== null &&
+    inn?.non_striker_id !== null &&
+    inn?.bowler_id !== null;
+
+  const missingPlayersDescription = getMissingPlayersDescription(
+    isScoringReady ? null : inn,
+  );
+
   const battingPlayers =
     inn && matchDetail
       ? inn.batting_team_id === matchDetail.team_a_id
@@ -776,60 +796,55 @@ export default function ScoringPage() {
         : (matchDetail.teamB?.players ?? [])
       : [];
 
+  const guardScoring = useCallback((): boolean => {
+    if (!isScoringReady) {
+      setPlayerAssignOpen(true);
+      return false;
+    }
+    return true;
+  }, [isScoringReady]);
+
   const handleRunClick = useCallback(
     async (runs: number) => {
       if (!inn || recording) return;
-      if (
-        inn.striker_id === null ||
-        inn.non_striker_id === null ||
-        inn.bowler_id === null
-      ) {
-        return toast.error(
-          "Players not set. Please assign batsmen and bowler.",
-        );
-      }
+      if (!guardScoring()) return;
       try {
         const payload: CreateBallEventPayload = {
           innings_id: inn.id,
-          striker_id: inn.striker_id,
-          non_striker_id: inn.non_striker_id,
-          bowler_id: inn.bowler_id,
+          striker_id: inn.striker_id!,
+          non_striker_id: inn.non_striker_id!,
+          bowler_id: inn.bowler_id!,
           runs_bat: runs,
         };
-        setLastBowlerId(inn.bowler_id);
+        setLastBowlerId(inn.bowler_id!);
         await storageRecordBall(payload);
       } catch (err) {
         toast.error(getErrorMessage(err));
       }
     },
-    [inn, recording, storageRecordBall],
+    [inn, recording, guardScoring, storageRecordBall],
   );
 
   const handleExtraClick = (type: ExtraType) => {
+    if (!guardScoring()) return;
     setSelectedExtraType(type);
     setExtrasOpen(true);
   };
 
   const handleExtraSubmit = async (runsBat: number, runsExtra: number) => {
     if (!inn || recording) return;
-    if (
-      inn.striker_id === null ||
-      inn.non_striker_id === null ||
-      inn.bowler_id === null
-    ) {
-      return toast.error("Players not set.");
-    }
+    if (!guardScoring()) return;
     try {
       const payload: CreateBallEventPayload = {
         innings_id: inn.id,
-        striker_id: inn.striker_id,
-        non_striker_id: inn.non_striker_id,
-        bowler_id: inn.bowler_id,
+        striker_id: inn.striker_id!,
+        non_striker_id: inn.non_striker_id!,
+        bowler_id: inn.bowler_id!,
         runs_bat: runsBat,
         extra_type: selectedExtraType!,
         runs_extra: runsExtra,
       };
-      setLastBowlerId(inn.bowler_id);
+      setLastBowlerId(inn.bowler_id!);
       await storageRecordBall(payload);
       setExtrasOpen(false);
       setSelectedExtraType(null);
@@ -845,31 +860,30 @@ export default function ScoringPage() {
     runs_bat: number;
   }) => {
     if (!inn || recording) return;
-    if (
-      inn.striker_id === null ||
-      inn.non_striker_id === null ||
-      inn.bowler_id === null
-    ) {
-      return toast.error("Players not set.");
-    }
+    if (!guardScoring()) return;
     try {
       const payload: CreateBallEventPayload = {
         innings_id: inn.id,
-        striker_id: inn.striker_id,
-        non_striker_id: inn.non_striker_id,
-        bowler_id: inn.bowler_id,
+        striker_id: inn.striker_id!,
+        non_striker_id: inn.non_striker_id!,
+        bowler_id: inn.bowler_id!,
         runs_bat: wicketData.runs_bat,
         is_wicket: true,
         wicket_type: wicketData.wicket_type,
         dismissed_player_id: wicketData.dismissed_player_id,
         fielder_id: wicketData.fielder_id,
       };
-      setLastBowlerId(inn.bowler_id);
+      setLastBowlerId(inn.bowler_id!);
       await storageRecordBall(payload);
       setWicketOpen(false);
     } catch (err) {
       toast.error(getErrorMessage(err));
     }
+  };
+
+  const handleWicketClick = () => {
+    if (!guardScoring()) return;
+    setWicketOpen(true);
   };
 
   const handlePlayerAssign = async (
@@ -1039,7 +1053,13 @@ export default function ScoringPage() {
       />
 
       <div className="grid grid-cols-3 gap-2">
-        <div className="bg-white border border-l-[3px] border-l-emerald-400 border-border rounded-2xl p-3 shadow-sm">
+        <div
+          className={`bg-white border border-l-[3px] border-border rounded-2xl p-3 shadow-sm transition-colors ${
+            !inn.striker_id
+              ? "border-l-amber-400 bg-amber-50/40"
+              : "border-l-emerald-400"
+          }`}
+        >
           <div className="flex items-center gap-1.5 mb-1.5">
             <div className="w-5 h-5 bg-emerald-50 rounded-md flex items-center justify-center">
               <Zap size={10} className="text-emerald-600" />
@@ -1049,7 +1069,9 @@ export default function ScoringPage() {
             </span>
           </div>
           <p className="text-xs font-bold text-foreground truncate">
-            {inn.striker?.name ?? "—"}
+            {inn.striker?.name ?? (
+              <span className="text-amber-500 font-semibold">Not set</span>
+            )}
           </p>
           {strikerStats ? (
             <div className="mt-1.5 flex gap-1.5">
@@ -1065,7 +1087,13 @@ export default function ScoringPage() {
           )}
         </div>
 
-        <div className="bg-white border border-l-[3px] border-l-blue-300 border-border rounded-2xl p-3 shadow-sm">
+        <div
+          className={`bg-white border border-l-[3px] border-border rounded-2xl p-3 shadow-sm transition-colors ${
+            !inn.non_striker_id
+              ? "border-l-amber-400 bg-amber-50/40"
+              : "border-l-blue-300"
+          }`}
+        >
           <div className="flex items-center gap-1.5 mb-1.5">
             <div className="w-5 h-5 bg-blue-50 rounded-md flex items-center justify-center">
               <Shield size={10} className="text-blue-500" />
@@ -1075,7 +1103,9 @@ export default function ScoringPage() {
             </span>
           </div>
           <p className="text-xs font-bold text-foreground truncate">
-            {inn.nonStriker?.name ?? "—"}
+            {inn.nonStriker?.name ?? (
+              <span className="text-amber-500 font-semibold">Not set</span>
+            )}
           </p>
           {nonStrikerStats ? (
             <div className="mt-1.5 flex gap-1.5">
@@ -1091,7 +1121,13 @@ export default function ScoringPage() {
           )}
         </div>
 
-        <div className="bg-white border border-l-[3px] border-l-red-400 border-border rounded-2xl p-3 shadow-sm">
+        <div
+          className={`bg-white border border-l-[3px] border-border rounded-2xl p-3 shadow-sm transition-colors ${
+            !inn.bowler_id
+              ? "border-l-amber-400 bg-amber-50/40"
+              : "border-l-red-400"
+          }`}
+        >
           <div className="flex items-center gap-1.5 mb-1.5">
             <div className="w-5 h-5 bg-red-50 rounded-md flex items-center justify-center">
               <CircleDot size={10} className="text-red-500" />
@@ -1101,7 +1137,9 @@ export default function ScoringPage() {
             </span>
           </div>
           <p className="text-xs font-bold text-foreground truncate">
-            {inn.bowler?.name ?? "—"}
+            {inn.bowler?.name ?? (
+              <span className="text-amber-500 font-semibold">Not set</span>
+            )}
           </p>
           {bowlerStats ? (
             <div className="mt-1.5 flex flex-wrap gap-1">
@@ -1151,53 +1189,75 @@ export default function ScoringPage() {
 
       {!isCompleted && (
         <>
+          {!isScoringReady && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+              <div className="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <AlertTriangle size={15} className="text-amber-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-amber-800">
+                  Assign players to continue
+                </p>
+                <p className="text-[11px] text-amber-600 mt-0.5 capitalize">
+                  Missing: {missingPlayersDescription}
+                </p>
+              </div>
+              <button
+                onClick={() => setPlayerAssignOpen(true)}
+                className="text-xs font-bold text-amber-700 bg-amber-100 border border-amber-300 px-3 py-1.5 rounded-xl hover:bg-amber-200 transition-colors flex-shrink-0"
+              >
+                Assign
+              </button>
+            </div>
+          )}
+
           <div className="grid grid-cols-4 gap-2">
             <button
               onClick={() => handleRunClick(0)}
-              disabled={recording}
-              className="h-16 rounded-2xl bg-gray-100 text-gray-700 font-bold text-lg border border-gray-200 transition-all active:scale-95 hover:bg-gray-200 disabled:opacity-50"
+              disabled={recording || !isScoringReady}
+              className="h-16 rounded-2xl bg-gray-100 text-gray-700 font-bold text-lg border border-gray-200 transition-all active:scale-95 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               0
             </button>
             <button
               onClick={() => handleRunClick(1)}
-              disabled={recording}
-              className="h-16 rounded-2xl bg-white text-foreground font-bold text-lg border border-border shadow-sm transition-all active:scale-95 hover:shadow-md disabled:opacity-50"
+              disabled={recording || !isScoringReady}
+              className="h-16 rounded-2xl bg-white text-foreground font-bold text-lg border border-border shadow-sm transition-all active:scale-95 hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
             >
               1
             </button>
             <button
               onClick={() => handleRunClick(2)}
-              disabled={recording}
-              className="h-16 rounded-2xl bg-white text-foreground font-bold text-lg border border-border shadow-sm transition-all active:scale-95 hover:shadow-md disabled:opacity-50"
+              disabled={recording || !isScoringReady}
+              className="h-16 rounded-2xl bg-white text-foreground font-bold text-lg border border-border shadow-sm transition-all active:scale-95 hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
             >
               2
             </button>
             <button
               onClick={() => handleRunClick(3)}
-              disabled={recording}
-              className="h-16 rounded-2xl bg-white text-foreground font-bold text-lg border border-border shadow-sm transition-all active:scale-95 hover:shadow-md disabled:opacity-50"
+              disabled={recording || !isScoringReady}
+              className="h-16 rounded-2xl bg-white text-foreground font-bold text-lg border border-border shadow-sm transition-all active:scale-95 hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
             >
               3
             </button>
             <button
               onClick={() => handleRunClick(4)}
-              disabled={recording}
-              className="h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-bold text-lg shadow-md shadow-emerald-200 transition-all active:scale-95 hover:shadow-lg disabled:opacity-50"
+              disabled={recording || !isScoringReady}
+              className="h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-bold text-lg shadow-md shadow-emerald-200 transition-all active:scale-95 hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
             >
               4
             </button>
             <button
               onClick={() => handleRunClick(6)}
-              disabled={recording}
-              className="h-16 rounded-2xl bg-gradient-to-br from-purple-400 to-purple-600 text-white font-bold text-lg shadow-md shadow-purple-200 transition-all active:scale-95 hover:shadow-lg disabled:opacity-50"
+              disabled={recording || !isScoringReady}
+              className="h-16 rounded-2xl bg-gradient-to-br from-purple-400 to-purple-600 text-white font-bold text-lg shadow-md shadow-purple-200 transition-all active:scale-95 hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
             >
               6
             </button>
             <button
-              onClick={() => setWicketOpen(true)}
-              disabled={recording}
-              className="h-16 rounded-2xl bg-gradient-to-br from-red-400 to-red-600 text-white font-bold text-sm shadow-md shadow-red-200 transition-all active:scale-95 hover:shadow-lg disabled:opacity-50 col-span-2"
+              onClick={handleWicketClick}
+              disabled={recording || !isScoringReady}
+              className="h-16 rounded-2xl bg-gradient-to-br from-red-400 to-red-600 text-white font-bold text-sm shadow-md shadow-red-200 transition-all active:scale-95 hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed col-span-2"
             >
               🏏 Wicket
             </button>
@@ -1206,29 +1266,29 @@ export default function ScoringPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <button
               onClick={() => handleExtraClick("wide")}
-              disabled={recording}
-              className="h-14 rounded-2xl bg-amber-50 text-amber-700 font-semibold text-xs border border-amber-200 transition-all active:scale-95 hover:bg-amber-100 disabled:opacity-50"
+              disabled={recording || !isScoringReady}
+              className="h-14 rounded-2xl bg-amber-50 text-amber-700 font-semibold text-xs border border-amber-200 transition-all active:scale-95 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Wide
             </button>
             <button
               onClick={() => handleExtraClick("no_ball")}
-              disabled={recording}
-              className="h-14 rounded-2xl bg-amber-50 text-amber-700 font-semibold text-xs border border-amber-200 transition-all active:scale-95 hover:bg-amber-100 disabled:opacity-50"
+              disabled={recording || !isScoringReady}
+              className="h-14 rounded-2xl bg-amber-50 text-amber-700 font-semibold text-xs border border-amber-200 transition-all active:scale-95 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               No Ball
             </button>
             <button
               onClick={() => handleExtraClick("bye")}
-              disabled={recording}
-              className="h-14 rounded-2xl bg-orange-50 text-orange-700 font-semibold text-xs border border-orange-200 transition-all active:scale-95 hover:bg-orange-100 disabled:opacity-50"
+              disabled={recording || !isScoringReady}
+              className="h-14 rounded-2xl bg-orange-50 text-orange-700 font-semibold text-xs border border-orange-200 transition-all active:scale-95 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               By
             </button>
             <button
               onClick={() => handleExtraClick("leg_bye")}
-              disabled={recording}
-              className="h-14 rounded-2xl bg-orange-50 text-orange-700 font-semibold text-xs border border-orange-200 transition-all active:scale-95 hover:bg-orange-100 disabled:opacity-50"
+              disabled={recording || !isScoringReady}
+              className="h-14 rounded-2xl bg-orange-50 text-orange-700 font-semibold text-xs border border-orange-200 transition-all active:scale-95 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Leg By
             </button>

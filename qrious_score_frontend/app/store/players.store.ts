@@ -5,6 +5,7 @@ import {
   deletePlayer as deletePlayerAPI,
   getPlayers,
   getPlayersList,
+  bulkUploadPlayers,
 } from "../services/players.service";
 import { Player, PlayerState } from "../types/players.types";
 
@@ -104,5 +105,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     } finally {
       set({ loading: false });
     }
+  },
+
+  bulkUpload: async (file: File) => {
+    const res = await bulkUploadPlayers(file);
+    if (res.data?.success_count > 0) {
+      await get().fetchPlayers(get().search, get().page, get().role);
+    }
+    return res;
   },
 }));

@@ -136,18 +136,29 @@ export function PlayerFormModal({
         ]}
       />
 
-      <Input
+      <Select
         label="Batting Style"
-        placeholder="e.g. Right-hand bat"
         value={form.batting_style}
-        onChange={(e) => setForm({ ...form, batting_style: e.target.value })}
+        onChange={(val) => setForm({ ...form, batting_style: val })}
+        placeholder="Select batting style"
+        options={[
+          { label: "Right Hand Bat (RHB)", value: "RHB" },
+          { label: "Left Hand Bat (LHB)", value: "LHB" },
+        ]}
       />
 
-      <Input
+      <Select
         label="Bowling Style"
-        placeholder="e.g. Right-arm fast"
         value={form.bowling_style}
-        onChange={(e) => setForm({ ...form, bowling_style: e.target.value })}
+        onChange={(val) => setForm({ ...form, bowling_style: val })}
+        placeholder="Select bowling style"
+        options={[
+          { label: "Right Arm Fast (RAF)", value: "RAF" },
+          { label: "Left Arm Fast (LAF)", value: "LAF" },
+          { label: "Right Arm Off Spin (OFF)", value: "OFF" },
+          { label: "Left Arm Orthodox (LAO)", value: "LAO" },
+          { label: "Right Arm Leg Spin (LEG)", value: "LEG" },
+        ]}
       />
     </FormModal>
   );

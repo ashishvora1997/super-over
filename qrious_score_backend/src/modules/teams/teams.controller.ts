@@ -1,4 +1,6 @@
+import 'multer';
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -7,7 +9,9 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { TeamsService } from './teams.service';
 import { CreateTeamDto } from './dtos/create-team.dto';
@@ -19,6 +23,8 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 import { SetCaptainDto } from './dtos/set-captain.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { SetWicketKeeperDto } from './dtos/set-wicket-keeper.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { multerConfig } from 'src/database/config/multer.config';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('teams')
@@ -74,5 +80,16 @@ export class TeamsController {
   @Roles('admin', 'scorer')
   setWicketKeeper(@Body() data: SetWicketKeeperDto) {
     return this.teamsService.setWicketKeeper(data);
+  }
+
+  @Post('bulk-upload')
+  @Roles('scorer')
+  @UseInterceptors(FileInterceptor('file', multerConfig))
+  async bulkUpload(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+
+    return this.teamsService.handleBulkUpload(file);
   }
 }
