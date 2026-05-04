@@ -129,6 +129,10 @@ function MatchCard({
 
   const teamAWon = match.winner_team_id === match.team_a_id;
   const teamBWon = match.winner_team_id === match.team_b_id;
+  const isTied = match.result === 'tie';
+  const isDraw = match.result === 'draw';
+  const isSuperOver = match.result === 'super_over' || match.is_super_over;
+  const isNoResult = match.result === 'no_result';
 
   return (
     <div
@@ -180,6 +184,8 @@ function MatchCard({
               className={`w-9 h-9 rounded-xl flex items-center justify-center text-[11px] font-bold flex-shrink-0 shadow-sm ${
                 teamAWon && status === "completed"
                   ? "bg-gradient-to-br from-accent to-accent-dark text-white"
+                  : isTied || isNoResult || isDraw
+                  ? "bg-gray-100 text-gray-500"
                   : "bg-gray-100 text-foreground"
               }`}
             >
@@ -190,6 +196,8 @@ function MatchCard({
                 className={`text-xs font-bold leading-tight truncate ${
                   teamAWon && status === "completed"
                     ? "text-accent-dark"
+                    : isTied || isNoResult || isDraw
+                    ? "text-gray-500"
                     : "text-foreground"
                 }`}
               >
@@ -198,6 +206,26 @@ function MatchCard({
               {teamAWon && status === "completed" && (
                 <p className="text-[10px] font-semibold text-accent-dark/70 leading-tight">
                   Winner 🏆
+                </p>
+              )}
+              {isTied && status === "completed" && (
+                <p className="text-[10px] font-semibold text-amber-600 leading-tight">
+                  Tied
+                </p>
+              )}
+              {isNoResult && status === "completed" && (
+                <p className="text-[10px] font-semibold text-gray-500 leading-tight">
+                  No Result
+                </p>
+              )}
+              {isDraw && status === "completed" && (
+                <p className="text-[10px] font-semibold text-blue-600 leading-tight">
+                  Draw
+                </p>
+              )}
+              {isSuperOver && status === "live" && (
+                <p className="text-[10px] font-semibold text-purple-600 leading-tight">
+                  Super Over {match.super_over_number > 1 ? `${match.super_over_number}` : ""} 🎯
                 </p>
               )}
             </div>
@@ -223,6 +251,8 @@ function MatchCard({
                 className={`text-xs font-bold leading-tight truncate ${
                   teamBWon && status === "completed"
                     ? "text-accent-dark"
+                    : isTied || isNoResult || isDraw
+                    ? "text-gray-500"
                     : "text-foreground"
                 }`}
               >
@@ -233,11 +263,33 @@ function MatchCard({
                   Winner 🏆
                 </p>
               )}
+              {isTied && status === "completed" && (
+                <p className="text-[10px] font-semibold text-amber-600 leading-tight">
+                  Tied
+                </p>
+              )}
+              {isNoResult && status === "completed" && (
+                <p className="text-[10px] font-semibold text-gray-500 leading-tight">
+                  No Result
+                </p>
+              )}
+              {isDraw && status === "completed" && (
+                <p className="text-[10px] font-semibold text-blue-600 leading-tight">
+                  Draw
+                </p>
+              )}
+              {isSuperOver && status === "live" && (
+                <p className="text-[10px] font-semibold text-purple-600 leading-tight">
+                  Super Over {match.super_over_number > 1 ? `${match.super_over_number}` : ""} 🎯
+                </p>
+              )}
             </div>
             <div
               className={`w-9 h-9 rounded-xl flex items-center justify-center text-[11px] font-bold flex-shrink-0 shadow-sm ${
                 teamBWon && status === "completed"
                   ? "bg-gradient-to-br from-accent to-accent-dark text-white"
+                  : isTied || isNoResult || isDraw
+                  ? "bg-gray-100 text-gray-500"
                   : "bg-gray-100 text-foreground"
               }`}
             >

@@ -2,7 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { MapPin, CalendarDays, Swords, Trophy, Zap, Eye } from "lucide-react";
+import {
+  MapPin,
+  CalendarDays,
+  Swords,
+  Trophy,
+  Zap,
+  Eye,
+  Target,
+  AlertCircle,
+} from "lucide-react";
 import { useAuthStore } from "@/app/store/auth.store";
 import { useTossStore } from "@/app/store/toss.store";
 import { useInningsStore } from "@/app/store/innings.store";
@@ -87,31 +96,125 @@ export default function MatchDetailPage() {
 
       <div className="bg-white border border-border rounded-2xl p-4 shadow-sm">
         {match.tournament && (
-          <div className="flex items-center gap-1.5 mb-3">
-            <Trophy size={12} className="text-muted" />
-            <span className="text-xs font-medium text-muted">
-              {match.tournament.name}
-            </span>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-1.5">
+              <Trophy size={12} className="text-muted" />
+              <span className="text-xs font-medium text-muted">
+                {match.tournament.name}
+              </span>
+            </div>
+            {match.status === "completed" && match.result === "tie" && (
+              <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                <AlertCircle size={10} />
+                Match Tied
+              </span>
+            )}
+            {match.status === "completed" && match.result === "no_result" && (
+              <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                <AlertCircle size={10} />
+                No Result
+              </span>
+            )}
+            {match.status === "completed" && match.result === "draw" && (
+              <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                <AlertCircle size={10} />
+                Match Drawn
+              </span>
+            )}
+            {match.is_super_over && (
+              <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                <Target size={10} />
+                Super Over{" "}
+                {match.super_over_number > 1
+                  ? `${match.super_over_number}`
+                  : ""}
+                {match.status === "completed" &&
+                  match.winner &&
+                  " - Winner Decided"}
+              </span>
+            )}
           </div>
         )}
 
         <div className="flex items-center gap-3 mb-3">
           <div className="flex-1 flex items-center gap-2 min-w-0">
-            <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0">
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                match.winner_team_id === match.team_a_id
+                  ? "bg-gradient-to-br from-accent to-accent-dark text-white"
+                  : match.status === "completed" &&
+                      (match.result === "tie" || match.result === "no_result")
+                    ? "bg-gray-100 text-gray-500"
+                    : "bg-gray-100 text-foreground"
+              }`}
+            >
               {match.teamA?.name.slice(0, 3).toUpperCase()}
             </div>
-            <p className="text-sm font-bold text-foreground truncate">
-              {match.teamA?.name}
-            </p>
+            <div className="min-w-0">
+              <p
+                className={`text-sm font-bold truncate ${
+                  match.winner_team_id === match.team_a_id
+                    ? "text-accent-dark"
+                    : match.status === "completed" &&
+                        (match.result === "tie" || match.result === "no_result")
+                      ? "text-gray-500"
+                      : "text-foreground"
+                }`}
+              >
+                {match.teamA?.name}
+              </p>
+              {match.winner_team_id === match.team_a_id && (
+                <p className="text-[10px] font-semibold text-accent-dark/70">
+                  Winner 🏆
+                </p>
+              )}
+              {match.status === "completed" && match.result === "tie" && (
+                <p className="text-[10px] font-semibold text-amber-600">Tied</p>
+              )}
+              {match.status === "completed" && match.result === "draw" && (
+                <p className="text-[10px] font-semibold text-blue-600">Draw</p>
+              )}
+            </div>
           </div>
           <div className="w-8 h-8 bg-gray-50 rounded-xl flex items-center justify-center flex-shrink-0">
             <Swords size={14} className="text-muted" strokeWidth={1.75} />
           </div>
           <div className="flex-1 flex items-center gap-2 justify-end min-w-0">
-            <p className="text-sm font-bold text-foreground truncate text-right">
-              {match.teamB?.name}
-            </p>
-            <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0">
+            <div className="min-w-0 text-right">
+              <p
+                className={`text-sm font-bold truncate ${
+                  match.winner_team_id === match.team_b_id
+                    ? "text-accent-dark"
+                    : match.status === "completed" &&
+                        (match.result === "tie" || match.result === "no_result")
+                      ? "text-gray-500"
+                      : "text-foreground"
+                }`}
+              >
+                {match.teamB?.name}
+              </p>
+              {match.winner_team_id === match.team_b_id && (
+                <p className="text-[10px] font-semibold text-accent-dark/70">
+                  Winner 🏆
+                </p>
+              )}
+              {match.status === "completed" && match.result === "tie" && (
+                <p className="text-[10px] font-semibold text-amber-600">Tied</p>
+              )}
+              {match.status === "completed" && match.result === "draw" && (
+                <p className="text-[10px] font-semibold text-blue-600">Draw</p>
+              )}
+            </div>
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                match.winner_team_id === match.team_b_id
+                  ? "bg-gradient-to-br from-accent to-accent-dark text-white"
+                  : match.status === "completed" &&
+                      (match.result === "tie" || match.result === "no_result")
+                    ? "bg-gray-100 text-gray-500"
+                    : "bg-gray-100 text-foreground"
+              }`}
+            >
               {match.teamB?.name.slice(0, 3).toUpperCase()}
             </div>
           </div>

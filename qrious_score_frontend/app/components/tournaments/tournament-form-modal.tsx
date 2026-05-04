@@ -134,6 +134,7 @@ export function TournamentFormModal({
           required
           type="date"
           value={form.start_date}
+          min={new Date().toISOString().split("T")[0]}
           onChange={(e) => set("start_date", e.target.value)}
           error={errors.start_date}
         />

@@ -22,14 +22,15 @@ export function AssignTeamsModal({ open, onClose, tournament }: Props) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (open) fetchTeams("", 1);
-  }, [open]);
-
-  useEffect(() => {
-    if (tournament?.teams) {
-      setSelected(tournament.teams.map((t) => t.id));
+    if (open) {
+      fetchTeams("", 1);
+      if (tournament?.teams) {
+        setSelected(tournament.teams.map((t) => t.id));
+      }
+    } else {
+      setSelected([]);
     }
-  }, [tournament]);
+  }, [open, tournament]);
 
   const handleSubmit = async () => {
     try {

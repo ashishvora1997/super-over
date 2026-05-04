@@ -48,6 +48,8 @@ export interface CreateBallEventPayload {
   dismissed_player_id?: number;
   fielder_id?: number;
   metadata?: Record<string, unknown>;
+  runs_completed?: number;
+  batsmen_crossed?: boolean;
 }
 
 export interface BatterStats {

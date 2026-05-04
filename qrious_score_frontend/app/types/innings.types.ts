@@ -14,6 +14,9 @@ export interface Innings {
   overs: number;
   balls: number;
   status: InningsStatus;
+  is_super_over: boolean;
+  super_over_number: number;
+  max_wickets: number;
   battingTeam?: { id: number; name: string };
   bowlingTeam?: { id: number; name: string };
   striker?: { id: number; name: string } | null;

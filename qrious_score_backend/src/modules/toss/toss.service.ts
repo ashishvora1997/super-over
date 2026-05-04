@@ -92,9 +92,24 @@ export class TossService {
       overs: 0,
       balls: 0,
       status: 'not_started',
+      max_wickets: 10,
     });
 
-    return successResponse('Toss recorded successfully', toss);
+    if (match.status === 'scheduled') {
+      await match.update({ status: 'live' });
+    }
+
+    const tossWithTeam = await this.tossModel.findByPk(toss.id, {
+      include: [
+        {
+          model: Team,
+          as: 'tossWinnerTeam',
+          attributes: ['id', 'name'],
+        },
+      ],
+    });
+
+    return successResponse('Toss recorded successfully', tossWithTeam);
   }
 
   async findByMatch(matchId: number): Promise<SuccessResponse<Toss>> {

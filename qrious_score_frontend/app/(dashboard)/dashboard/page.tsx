@@ -7,7 +7,8 @@ import { useMatchStore } from "@/app/store/matches.store";
 import { usePlayerStore } from "@/app/store/players.store";
 import { useTeamStore } from "@/app/store/teams.store";
 import { Users, UsersRound, Trophy, Radio } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+import { useLiveMatchUpdates } from "@/app/hooks/useLiveMatchUpdates";
 
 export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);
@@ -29,6 +30,23 @@ export default function DashboardPage() {
   }, [fetchPlayersList, fetchTeamsList, fetchMatchesList, fetchMatches]);
 
   const liveMatches = matches.filter((item) => item.status === "live").length;
+
+  const recentMatches = useMemo(() => {
+    const sorted = [...matches].sort((a, b) => {
+      if (a.status === "live" && b.status !== "live") return -1;
+      if (a.status !== "live" && b.status === "live") return 1;
+      return (
+        new Date(b.match_date).getTime() - new Date(a.match_date).getTime()
+      );
+    });
+    return sorted.slice(0, 5);
+  }, [matches]);
+
+  const liveMatchIds = useMemo(
+    () => matches.filter((m) => m.status === "live").map((m) => m.id),
+    [matches],
+  );
+  useLiveMatchUpdates(liveMatchIds);
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -76,36 +94,19 @@ export default function DashboardPage() {
           <h3 className="text-sm font-semibold text-foreground">
             Recent Matches
           </h3>
+          <span className="text-xs text-muted">{matches.length} total</span>
         </div>
 
         <div className="divide-y divide-border">
-          <MatchRow
-            home="RCB"
-            away="MI"
-            homeScore="186/4"
-            awayScore="172/8"
-            overs="20"
-            status="completed"
-            result="RCB won by 14 runs"
-          />
-          <MatchRow
-            home="CSK"
-            away="GT"
-            homeScore="124/3"
-            awayScore="—"
-            overs="14.2"
-            status="live"
-            result="CSK batting • 14.2 overs"
-          />
-          <MatchRow
-            home="KKR"
-            away="PBKS"
-            homeScore="—"
-            awayScore="—"
-            overs="—"
-            status="upcoming"
-            result="Today • 7:30 PM IST"
-          />
+          {recentMatches.length === 0 ? (
+            <div className="px-5 py-8 text-center text-sm text-muted">
+              No matches yet. Create your first match to get started.
+            </div>
+          ) : (
+            recentMatches.map((match) => (
+              <MatchRow key={match.id} match={match} />
+            ))
+          )}
         </div>
       </div>
     </div>

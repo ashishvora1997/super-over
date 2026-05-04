@@ -133,6 +133,7 @@ export function PlayerFormModal({
           { label: "Batsman", value: "batsman" },
           { label: "Bowler", value: "bowler" },
           { label: "All Rounder", value: "all_rounder" },
+          { label: "Wicket Keeper", value: "wicket_keeper" }
         ]}
       />
 

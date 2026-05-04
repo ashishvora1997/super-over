@@ -10,8 +10,10 @@ import {
   MapPin,
   CalendarDays,
   Users,
+  BarChart3,
 } from "lucide-react";
 
+import Link from "next/link";
 import { Table } from "@/app/components/ui/Table";
 import { ConfirmModal } from "@/app/components/ui/modal/confirm-modal";
 import { TournamentFormModal } from "@/app/components/tournaments/tournament-form-modal";
@@ -228,6 +230,19 @@ export default function TournamentsPage() {
         );
       },
     },
+    {
+      key: "standings",
+      title: "",
+      render: (t) => (
+        <Link
+          href={`/tournaments/${t.id}/standings`}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors"
+        >
+          <BarChart3 size={12} />
+          Standings
+        </Link>
+      ),
+    },
   ];
 
   const canModify = hasRole(user?.role, ["admin", "scorer"]);
@@ -426,6 +441,14 @@ export default function TournamentsPage() {
                       Manage Teams
                     </button>
                   </RoleGuard>
+
+                  <Link
+                    href={`/tournaments/${tournament.id}/standings`}
+                    className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 active:scale-[0.98] transition-all`}
+                  >
+                    <BarChart3 size={14} />
+                    View Standings
+                  </Link>
                 </div>
               </div>
             );

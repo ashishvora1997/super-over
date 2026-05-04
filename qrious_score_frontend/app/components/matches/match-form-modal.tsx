@@ -108,6 +108,28 @@ export function MatchFormModal({ open, onClose, mode, match }: Props) {
     )
       newErrors.team_b_id = "Both teams cannot be the same";
     if (!form.match_date) newErrors.match_date = "Match date is required";
+
+    if (form.match_date && selectedTournament) {
+      const matchDate = new Date(form.match_date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (matchDate < today) {
+        newErrors.match_date = "Match date cannot be in the past";
+      }
+
+      if (selectedTournament.start_date && selectedTournament.end_date) {
+        const tournamentStart = new Date(selectedTournament.start_date);
+        const tournamentEnd = new Date(selectedTournament.end_date);
+
+        if (matchDate < tournamentStart) {
+          newErrors.match_date = `Match date must be on or after ${tournamentStart.toLocaleDateString()}`;
+        } else if (matchDate > tournamentEnd) {
+          newErrors.match_date = `Match date must be on or before ${tournamentEnd.toLocaleDateString()}`;
+        }
+      }
+    }
+
     if (mode === "edit" && form.status === "completed" && !form.winner_team_id)
       newErrors.winner_team_id = "Select a winner for completed match";
 
@@ -217,6 +239,12 @@ export function MatchFormModal({ open, onClose, mode, match }: Props) {
         required
         type="datetime-local"
         value={form.match_date}
+        min={new Date().toISOString().slice(0, 16)}
+        max={
+          selectedTournament?.end_date
+            ? new Date(selectedTournament.end_date).toISOString().slice(0, 16)
+            : undefined
+        }
         onChange={(e) => set("match_date", e.target.value)}
         error={errors.match_date}
       />
@@ -231,6 +259,7 @@ export function MatchFormModal({ open, onClose, mode, match }: Props) {
           value={form.overs_per_side}
           onChange={(e) => set("overs_per_side", Number(e.target.value) || 20)}
           error={errors.overs_per_side}
+          disabled={mode === "edit" && match?.status !== "scheduled"}
         />
         <Input
           label="Venue"

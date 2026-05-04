@@ -26,6 +26,12 @@ export const getTournaments = (
     .get("/tournaments", { params: { search, page, pageSize } })
     .then((r) => r.data);
 
+export const getTournament = (
+  id: number,
+): Promise<{ success: boolean; message: string; data: Tournament }> =>
+  api.get(`/tournaments/${id}`).then((r) => r.data);
+
+
 export const createTournament = (
   payload: CreateTournamentPayload,
 ): Promise<Tournament> => api.post("/tournaments", payload).then((r) => r.data);

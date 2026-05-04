@@ -48,6 +48,15 @@ export class Innings extends Model {
   })
   declare status: 'not_started' | 'in_progress' | 'completed';
 
+  @Column({ defaultValue: false })
+  declare is_super_over: boolean;
+
+  @Column({ defaultValue: 0 })
+  declare super_over_number: number;
+
+  @Column({ defaultValue: 10 })
+  declare max_wickets: number;
+
   @ForeignKey(() => Player)
   @Column({ allowNull: true })
   declare striker_id: number;
