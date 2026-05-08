@@ -4,7 +4,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { registerUser } from "@/app/services/auth.service";
-import { useAuthStore } from "@/app/store/auth.store";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -48,16 +47,14 @@ export default function RegisterPage() {
     mode: "onSubmit",
   });
 
-  const setAuth = useAuthStore((state) => state.setAuth);
-
   const onSubmit = async (data: RegisterForm) => {
     try {
       const res = await registerUser(data);
-
-      setAuth(res.data);
       toast.success("Account created successfully 🎉");
 
-      window.location.href = "/dashboard";
+      // Register returns { userId, email } — no token yet (comes after OTP verification)
+      const { userId, email } = res.data as unknown as { userId: number; email: string };
+      window.location.href = `/verify-email?userId=${userId}&email=${encodeURIComponent(email)}`;
     } catch (error: unknown) {
       toast.error(getErrorMessage(error));
     }
