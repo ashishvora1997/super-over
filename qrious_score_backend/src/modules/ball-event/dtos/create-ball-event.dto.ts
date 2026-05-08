@@ -88,4 +88,12 @@ export class CreateBallEventDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsNumber()
+  runs_completed?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  batsmen_crossed?: boolean;
 }

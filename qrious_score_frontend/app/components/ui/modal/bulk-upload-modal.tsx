@@ -11,12 +11,10 @@ import {
 } from "lucide-react";
 import { BulkUploadResult } from "@/app/services/players.service";
 
-// ── Template helper ───────────────────────────────────────────────────────────
-
 export interface BulkUploadTemplateConfig {
-  filename: string; // e.g. "players_template.csv"
-  headers: string; // e.g. "name,role,batting_style,bowling_style"
-  sampleRows: string[]; // each row as a CSV string
+  filename: string;
+  headers: string;
+  sampleRows: string[];
 }
 
 function downloadTemplate(config: BulkUploadTemplateConfig) {
@@ -30,8 +28,6 @@ function downloadTemplate(config: BulkUploadTemplateConfig) {
   URL.revokeObjectURL(url);
 }
 
-// ── Props ─────────────────────────────────────────────────────────────────────
-
 interface BulkUploadModalProps {
   open: boolean;
   onClose: () => void;
@@ -40,8 +36,6 @@ interface BulkUploadModalProps {
   templateConfig: BulkUploadTemplateConfig;
   uploadFn: (file: File) => Promise<{ data: BulkUploadResult }>;
 }
-
-// ── Component ─────────────────────────────────────────────────────────────────
 
 export function BulkUploadModal({
   open,
@@ -137,15 +131,12 @@ export function BulkUploadModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
         onClick={handleClose}
       />
 
-      {/* Modal */}
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
-        {/* Header */}
         <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-border">
           <div>
             <h2 className="text-base font-semibold text-foreground">{title}</h2>
@@ -164,7 +155,6 @@ export function BulkUploadModal({
         <div className="px-6 py-5 space-y-4">
           {isDone ? (
             <div className="space-y-4">
-              {/* Summary */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-xl border border-border bg-background p-3 text-center">
                   <p className="text-xl font-bold text-foreground font-mono">
@@ -321,7 +311,6 @@ export function BulkUploadModal({
             </div>
           ) : (
             <>
-              {/* Template download */}
               <button
                 onClick={() => downloadTemplate(templateConfig)}
                 className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl border border-dashed border-primary/40 bg-primary/4 hover:bg-primary/8 hover:border-primary/60 transition-colors group"

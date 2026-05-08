@@ -25,6 +25,7 @@ interface InningsState {
     payload: UpdateInningsPlayersPayload,
     matchId: number,
   ) => Promise<void>;
+  updateInningsInArray: (updatedInnings: Innings) => void;
   reset: () => void;
 }
 
@@ -52,6 +53,14 @@ export const useInningsStore = create<InningsState>((set, get) => ({
   updateInningsPlayers: async (inningsId, payload, matchId) => {
     await updateInningsPlayers(inningsId, payload);
     await get().fetchInnings(matchId);
+  },
+
+  updateInningsInArray: (updatedInnings: Innings) => {
+    set((state) => ({
+      innings: state.innings.map((inn) =>
+        inn.id === updatedInnings.id ? updatedInnings : inn
+      ),
+    }));
   },
 
   reset: () => set({ innings: [], loading: false }),

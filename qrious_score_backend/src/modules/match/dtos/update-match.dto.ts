@@ -4,6 +4,7 @@ import {
   IsDateString,
   IsString,
   IsIn,
+  IsNumber,
 } from 'class-validator';
 
 export class UpdateMatchDto {
@@ -30,4 +31,8 @@ export class UpdateMatchDto {
   @IsOptional()
   @IsInt()
   winner_team_id?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  overs_per_side?: number;
 }

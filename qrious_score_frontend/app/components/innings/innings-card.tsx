@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Users, Play, RefreshCw } from "lucide-react";
 import { FormModal } from "@/app/components/ui/modal/form-modal";
+import { Select } from "@/app/components/ui/select";
 import { RoleGuard } from "@/app/components/auth/role-guard";
 import { Match } from "@/app/types/match.types";
 import toast from "react-hot-toast";
@@ -139,65 +140,29 @@ function StartInningsModal({
         </div>
       </div>
 
-      <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-          Striker (on strike)
-        </label>
-        <select
-          value={strikerId}
-          onChange={(e) =>
-            setStrikerId(e.target.value ? Number(e.target.value) : "")
-          }
-          className="w-full px-4 py-2.5 border border-border rounded-xl text-sm bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 appearance-none"
-        >
-          <option value="">Select batsman...</option>
-          {availableStrikers.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Select
+        label="Striker (on strike)"
+        value={String(strikerId)}
+        onChange={(val) => setStrikerId(val ? Number(val) : "")}
+        placeholder="Select batsman..."
+        options={availableStrikers.map((p) => ({ label: p.name, value: String(p.id) }))}
+      />
 
-      <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-          Non-striker
-        </label>
-        <select
-          value={nonStrikerId}
-          onChange={(e) =>
-            setNonStrikerId(e.target.value ? Number(e.target.value) : "")
-          }
-          className="w-full px-4 py-2.5 border border-border rounded-xl text-sm bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 appearance-none"
-        >
-          <option value="">Select batsman...</option>
-          {availableNonStrikers.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Select
+        label="Non-striker"
+        value={String(nonStrikerId)}
+        onChange={(val) => setNonStrikerId(val ? Number(val) : "")}
+        placeholder="Select batsman..."
+        options={availableNonStrikers.map((p) => ({ label: p.name, value: String(p.id) }))}
+      />
 
-      <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-          Opening bowler
-        </label>
-        <select
-          value={bowlerId}
-          onChange={(e) =>
-            setBowlerId(e.target.value ? Number(e.target.value) : "")
-          }
-          className="w-full px-4 py-2.5 border border-border rounded-xl text-sm bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 appearance-none"
-        >
-          <option value="">Select bowler...</option>
-          {bowlingPlayers.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Select
+        label="Opening bowler"
+        value={String(bowlerId)}
+        onChange={(val) => setBowlerId(val ? Number(val) : "")}
+        placeholder="Select bowler..."
+        options={bowlingPlayers.map((p) => ({ label: p.name, value: String(p.id) }))}
+      />
     </FormModal>
   );
 }
@@ -265,65 +230,29 @@ function UpdatePlayersModal({
       submitText="Update"
       loading={loading}
     >
-      <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-          Striker
-        </label>
-        <select
-          value={strikerId}
-          onChange={(e) =>
-            setStrikerId(e.target.value ? Number(e.target.value) : "")
-          }
-          className="w-full px-4 py-2.5 border border-border rounded-xl text-sm bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 appearance-none"
-        >
-          <option value="">Keep current</option>
-          {availableStrikers.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Select
+        label="Striker"
+        value={String(strikerId)}
+        onChange={(val) => setStrikerId(val ? Number(val) : "")}
+        placeholder="Keep current"
+        options={availableStrikers.map((p) => ({ label: p.name, value: String(p.id) }))}
+      />
 
-      <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-          Non-striker
-        </label>
-        <select
-          value={nonStrikerId}
-          onChange={(e) =>
-            setNonStrikerId(e.target.value ? Number(e.target.value) : "")
-          }
-          className="w-full px-4 py-2.5 border border-border rounded-xl text-sm bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 appearance-none"
-        >
-          <option value="">Keep current</option>
-          {availableNonStrikers.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Select
+        label="Non-striker"
+        value={String(nonStrikerId)}
+        onChange={(val) => setNonStrikerId(val ? Number(val) : "")}
+        placeholder="Keep current"
+        options={availableNonStrikers.map((p) => ({ label: p.name, value: String(p.id) }))}
+      />
 
-      <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-          Current bowler
-        </label>
-        <select
-          value={bowlerId}
-          onChange={(e) =>
-            setBowlerId(e.target.value ? Number(e.target.value) : "")
-          }
-          className="w-full px-4 py-2.5 border border-border rounded-xl text-sm bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 appearance-none"
-        >
-          <option value="">Keep current</option>
-          {bowlingPlayers.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Select
+        label="Current bowler"
+        value={String(bowlerId)}
+        onChange={(val) => setBowlerId(val ? Number(val) : "")}
+        placeholder="Keep current"
+        options={bowlingPlayers.map((p) => ({ label: p.name, value: String(p.id) }))}
+      />
     </FormModal>
   );
 }

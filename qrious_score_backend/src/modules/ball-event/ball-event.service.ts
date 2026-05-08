@@ -15,6 +15,9 @@ import { CreateBallEventDto } from './dtos/create-ball-event.dto';
 import { SuccessResponse } from 'src/common/types/response.type';
 import { successResponse } from 'src/common/utils/response.util';
 import { Sequelize } from 'sequelize-typescript';
+import { Op } from 'sequelize';
+import { PointsTableService } from '../points-table/points-table.service';
+import { ScoringGateway } from '../scoring-gateway/scoring.gateway';
 
 @Injectable()
 export class BallEventService {
@@ -32,6 +35,10 @@ export class BallEventService {
     private teamPlayerModel: typeof TeamPlayer,
 
     private sequelize: Sequelize,
+
+    private readonly pointsTableService: PointsTableService,
+
+    private readonly scoringGateway: ScoringGateway,
   ) {}
 
   private get ballEventInclude() {
@@ -123,6 +130,18 @@ export class BallEventService {
     const totalDeliveryRuns = runs_bat + runs_extra;
 
     const result = await this.sequelize.transaction(async (transaction) => {
+      const ballMetadata: Record<string, unknown> = {
+        ...metadata,
+      };
+      if (is_wicket && wicket_type === 'run_out') {
+        if (dto.runs_completed !== undefined) {
+          ballMetadata.runs_completed = dto.runs_completed;
+        }
+        if (dto.batsmen_crossed !== undefined) {
+          ballMetadata.batsmen_crossed = dto.batsmen_crossed;
+        }
+      }
+
       const ballEvent = await this.ballEventModel.create(
         {
           innings_id,
@@ -139,7 +158,7 @@ export class BallEventService {
           dismissed_player_id: dismissed_player_id || null,
           fielder_id: fielder_id || null,
           is_legal: isLegal,
-          metadata: metadata || null,
+          metadata: Object.keys(ballMetadata).length > 0 ? ballMetadata : null,
         },
         { transaction },
       );
@@ -170,10 +189,20 @@ export class BallEventService {
       let newNonStrikerId = non_striker_id;
 
       if (is_wicket && dismissed_player_id) {
-        if (dismissed_player_id === newStrikerId) {
+        const strikerOut = dismissed_player_id === newStrikerId;
+        const nonStrikerOut = dismissed_player_id === newNonStrikerId;
+
+        if (strikerOut) {
           newStrikerId = null;
-        } else if (dismissed_player_id === newNonStrikerId) {
+        } else if (nonStrikerOut) {
           newNonStrikerId = null;
+        }
+
+        if (wicket_type === 'run_out' && dto.batsmen_crossed) {
+          if (strikerOut && newNonStrikerId) {
+            newStrikerId = newNonStrikerId;
+            newNonStrikerId = null;
+          }
         }
       }
 
@@ -208,8 +237,9 @@ export class BallEventService {
         updateData.bowler_id = bowler_id;
       }
 
-      const allOut = newWickets >= 10;
-      const oversFinished = newOvers >= match.overs_per_side && newBalls === 0;
+      const allOut = newWickets >= innings.max_wickets;
+      const maxOvers = innings.is_super_over ? 1 : match.overs_per_side;
+      const oversFinished = newOvers >= maxOvers && newBalls === 0;
 
       let targetChased = false;
       let firstInningsTotal: number | null = null;
@@ -224,6 +254,22 @@ export class BallEventService {
         if (firstInnings) {
           firstInningsTotal = firstInnings.total_runs;
           if (updateData.total_runs > firstInnings.total_runs) {
+            targetChased = true;
+          }
+        }
+      } else if (innings.is_super_over && innings.innings_number % 2 === 0) {
+        const firstSuperOverInnings = await this.inningsModel.findOne({
+          where: {
+            match_id: innings.match_id,
+            innings_number: innings.innings_number - 1,
+            is_super_over: true,
+            super_over_number: innings.super_over_number,
+          },
+          transaction,
+        });
+        if (firstSuperOverInnings) {
+          firstInningsTotal = firstSuperOverInnings.total_runs;
+          if (updateData.total_runs > firstInningsTotal) {
             targetChased = true;
           }
         }
@@ -250,28 +296,84 @@ export class BallEventService {
               overs: 0,
               balls: 0,
               status: 'not_started',
+              max_wickets: 10,
             },
             { transaction },
           );
         } else if (innings.innings_number === 2 && firstInningsTotal !== null) {
           let winnerTeamId: number | null = null;
+          let matchResult: 'win' | 'tie' | 'super_over' = 'win';
+
           if (targetChased) {
             winnerTeamId = innings.batting_team_id;
+            matchResult = 'win';
           } else if (updateData.total_runs < firstInningsTotal) {
             winnerTeamId = innings.bowling_team_id;
+            matchResult = 'win';
           } else if (updateData.total_runs === firstInningsTotal) {
             winnerTeamId = null;
+            matchResult = 'super_over';
+          }
+
+          if (matchResult === 'super_over') {
+            const chasingTeamId = innings.batting_team_id;
+            const bowlingTeamId = innings.bowling_team_id;
+
+            await this.inningsModel.create(
+              {
+                match_id: innings.match_id,
+                innings_number: 3,
+                batting_team_id: chasingTeamId,
+                bowling_team_id: bowlingTeamId,
+                total_runs: 0,
+                wickets: 0,
+                overs: 0,
+                balls: 0,
+                status: 'not_started',
+                is_super_over: true,
+                super_over_number: 1,
+                max_wickets: 2,
+              },
+              { transaction },
+            );
+
+            await this.matchModel.update(
+              {
+                super_over_chasing_team_id: chasingTeamId,
+              },
+              {
+                where: { id: match.id },
+                transaction,
+              },
+            );
           }
 
           await this.matchModel.update(
             {
-              status: 'completed',
+              status: matchResult === 'super_over' ? 'live' : 'completed',
               winner_team_id: winnerTeamId,
+              result: matchResult,
+              is_super_over: matchResult === 'super_over',
+              super_over_number: matchResult === 'super_over' ? 1 : 0,
             },
             {
               where: { id: match.id },
               transaction,
             },
+          );
+
+          if (matchResult === 'win') {
+            await this.pointsTableService.updateFromMatch(
+              match.id,
+              transaction,
+            );
+          }
+        } else if (innings.is_super_over && innings.innings_number >= 3) {
+          await this.handleSuperOverCompletion(
+            match,
+            innings,
+            updateData,
+            transaction,
           );
         }
       }
@@ -296,6 +398,32 @@ export class BallEventService {
     return successResponse('Ball recorded successfully', {
       ballEvent,
       innings: updatedInnings,
+    });
+  }
+
+  emitBallRecorded(
+    matchId: number,
+    ballEvent: BallEvent,
+    innings: Innings,
+    scorecard: unknown,
+  ) {
+    this.scoringGateway.emitToMatch(matchId, 'ball:recorded', {
+      ballEvent,
+      innings,
+      scorecard,
+    });
+  }
+
+  emitBallUndone(
+    matchId: number,
+    innings: Innings,
+    removedEventId: number,
+    scorecard: unknown,
+  ) {
+    this.scoringGateway.emitToMatch(matchId, 'ball:undone', {
+      innings,
+      removedEventId,
+      scorecard,
     });
   }
 
@@ -399,10 +527,58 @@ export class BallEventService {
             await innings2.destroy({ transaction });
           }
         } else if (innings.innings_number === 2) {
+          await this.pointsTableService.reverseFromMatch(
+            innings.match_id,
+            transaction,
+          );
+
           await this.matchModel.update(
             {
               status: 'live',
               winner_team_id: null,
+              result: null,
+              is_super_over: false,
+              super_over_number: 0,
+            },
+            {
+              where: { id: innings.match_id },
+              transaction,
+            },
+          );
+        } else if (innings.is_super_over) {
+          const subsequentInnings = await this.inningsModel.findAll({
+            where: {
+              match_id: innings.match_id,
+              innings_number: { [Op.gt]: innings.innings_number },
+            },
+            transaction,
+          });
+
+          for (const subInnings of subsequentInnings) {
+            await this.ballEventModel.destroy({
+              where: { innings_id: subInnings.id },
+              transaction,
+            });
+            await subInnings.destroy({ transaction });
+          }
+
+          const match = await this.matchModel.findByPk(innings.match_id, {
+            transaction,
+          });
+          if (match && match.result === 'win') {
+            await this.pointsTableService.reverseFromMatch(
+              innings.match_id,
+              transaction,
+            );
+          }
+
+          await this.matchModel.update(
+            {
+              status: 'live',
+              winner_team_id: null,
+              result: innings.super_over_number === 1 ? 'super_over' : null,
+              is_super_over: true,
+              super_over_number: innings.super_over_number,
             },
             {
               where: { id: innings.match_id },
@@ -707,6 +883,136 @@ export class BallEventService {
       throw new BadRequestException(
         'Bowler does not belong to the bowling team',
       );
+    }
+  }
+
+  private async handleSuperOverCompletion(
+    match: Match,
+    currentInnings: Innings,
+    updateData: Partial<Innings>,
+    transaction: any,
+  ): Promise<void> {
+    const superOverNumber = currentInnings.super_over_number;
+
+    const chasingTeamId = match.super_over_chasing_team_id;
+    const otherTeamId =
+      chasingTeamId === match.team_a_id ? match.team_b_id : match.team_a_id;
+
+    if (currentInnings.innings_number % 2 === 1) {
+      await this.inningsModel.create(
+        {
+          match_id: match.id,
+          innings_number: currentInnings.innings_number + 1,
+          batting_team_id: otherTeamId,
+          bowling_team_id: chasingTeamId,
+          total_runs: 0,
+          wickets: 0,
+          overs: 0,
+          balls: 0,
+          status: 'not_started',
+          is_super_over: true,
+          super_over_number: superOverNumber,
+          max_wickets: 2,
+        },
+        { transaction },
+      );
+    } else {
+      const superOverInnings = await this.inningsModel.findAll({
+        where: {
+          match_id: match.id,
+          is_super_over: true,
+          super_over_number: superOverNumber,
+        },
+        transaction,
+      });
+
+      const firstSuperOverInnings = superOverInnings.find(
+        (i) => i.batting_team_id === chasingTeamId,
+      );
+
+      if (firstSuperOverInnings) {
+        const chasingTeamRuns = firstSuperOverInnings.total_runs;
+        const otherTeamRuns =
+          updateData.total_runs ?? currentInnings.total_runs;
+
+        const currentBattingTeamId = currentInnings.batting_team_id;
+
+        if (otherTeamRuns > chasingTeamRuns) {
+          await this.matchModel.update(
+            {
+              status: 'completed',
+              winner_team_id: currentBattingTeamId,
+              result: 'win',
+            },
+            {
+              where: { id: match.id },
+              transaction,
+            },
+          );
+          await this.pointsTableService.updateFromMatch(match.id, transaction);
+        } else if (otherTeamRuns < chasingTeamRuns) {
+          await this.matchModel.update(
+            {
+              status: 'completed',
+              winner_team_id: chasingTeamId,
+              result: 'win',
+            },
+            {
+              where: { id: match.id },
+              transaction,
+            },
+          );
+          await this.pointsTableService.updateFromMatch(match.id, transaction);
+        } else {
+          if (superOverNumber >= 2) {
+            await this.matchModel.update(
+              {
+                status: 'completed',
+                winner_team_id: null,
+                result: 'draw',
+              },
+              {
+                where: { id: match.id },
+                transaction,
+              },
+            );
+            await this.pointsTableService.updateFromMatch(
+              match.id,
+              transaction,
+            );
+          } else {
+            const newSuperOverNumber = superOverNumber + 1;
+
+            await this.inningsModel.create(
+              {
+                match_id: match.id,
+                innings_number: currentInnings.innings_number + 1,
+                batting_team_id: chasingTeamId,
+                bowling_team_id: otherTeamId,
+                total_runs: 0,
+                wickets: 0,
+                overs: 0,
+                balls: 0,
+                status: 'not_started',
+                is_super_over: true,
+                super_over_number: newSuperOverNumber,
+                max_wickets: 2,
+              },
+              { transaction },
+            );
+
+            await this.matchModel.update(
+              {
+                super_over_number: newSuperOverNumber,
+              },
+              {
+                where: { id: match.id },
+                transaction,
+              },
+            );
+          }
+        }
+      }
     }
   }
 }

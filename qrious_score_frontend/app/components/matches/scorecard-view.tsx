@@ -95,15 +95,28 @@ export function ViewerScoreboardView({
       : (matchDetail.teamB?.players ?? []);
 
   const firstInnings = allInnings.find((i) => i.innings_number === 1);
-  const target =
-    inn.innings_number === 2 && firstInnings
-      ? firstInnings.total_runs + 1
-      : null;
+
+  let target: number | null = null;
+  if (inn.innings_number === 2 && firstInnings) {
+    target = firstInnings.total_runs + 1;
+  } else if (inn.is_super_over && inn.innings_number % 2 === 0) {
+    const firstSuperOverInnings = allInnings.find(
+      (i) =>
+        i.is_super_over &&
+        i.super_over_number === inn.super_over_number &&
+        i.innings_number === inn.innings_number - 1,
+    );
+    if (firstSuperOverInnings) {
+      target = firstSuperOverInnings.total_runs + 1;
+    }
+  }
+
+  const maxBallsForInnings = inn.is_super_over
+    ? 6
+    : (matchDetail.overs_per_side ?? 20) * 6;
   const totalBallsBowled = inn.overs * 6 + inn.balls;
   const totalBallsRemaining =
-    target !== null
-      ? (matchDetail.overs_per_side ?? 20) * 6 - totalBallsBowled
-      : null;
+    target !== null ? maxBallsForInnings - totalBallsBowled : null;
   const runsNeeded = target !== null ? target - inn.total_runs : null;
   const reqRR =
     totalBallsRemaining && totalBallsRemaining > 0 && runsNeeded !== null
@@ -148,20 +161,23 @@ export function ViewerScoreboardView({
               )}
             </div>
 
-            {firstInnings && inn.innings_number === 2 && (
+            {(firstInnings && inn.innings_number === 2) ||
+            (inn.is_super_over && inn.innings_number % 2 === 0) ? (
               <div className="mb-2 pb-2 border-b border-white/10">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-white/40">
-                    {firstInnings.battingTeam?.name}
+                    {inn.innings_number === 2
+                      ? firstInnings?.battingTeam?.name
+                      : allInnings.find(
+                          (i) => i.innings_number === inn.innings_number - 1,
+                        )?.battingTeam?.name}
                   </span>
                   <span className="text-sm font-bold text-white/60">
-                    {firstInnings.total_runs}/{firstInnings.wickets} (
-                    {formatOvers(firstInnings.overs, firstInnings.balls)}/
-                    {matchDetail.overs_per_side ?? 20} Ov)
+                    Target: {target} runs
                   </span>
                 </div>
               </div>
-            )}
+            ) : null}
 
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold text-white/70">
@@ -466,9 +482,105 @@ export function ViewerScoreboardContainer({
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 8000);
-    return () => clearInterval(interval);
   }, [selectedInningsId]);
+
+  useEffect(() => {
+    if (!selectedInningsId) return;
+
+    let cleanup: (() => void) | undefined;
+
+    import("@/app/services/socket.service").then(
+      ({ getSocket, joinMatch, leaveMatch }) => {
+        const socket = getSocket();
+        if (!socket.connected) socket.connect();
+        joinMatch(matchDetail.id);
+
+        const handleBallRecorded = (payload: {
+          ballEvent: BallEvent;
+          innings: Innings;
+          scorecard: ScorecardData | null;
+        }) => {
+          if (payload.innings.id !== selectedInningsId) return;
+          setData((prev) => {
+            const existing = prev[selectedInningsId] || {
+              scorecard: null,
+              ballEvents: [],
+            };
+            const alreadyExists = existing.ballEvents.some(
+              (e) => e.id === payload.ballEvent.id,
+            );
+            return {
+              ...prev,
+              [selectedInningsId]: {
+                scorecard: payload.scorecard ?? existing.scorecard,
+                ballEvents: alreadyExists
+                  ? existing.ballEvents
+                  : [...existing.ballEvents, payload.ballEvent],
+              },
+            };
+          });
+        };
+
+        const handleBallUndone = (payload: {
+          innings: Innings;
+          scorecard: ScorecardData | null;
+        }) => {
+          if (payload.innings.id !== selectedInningsId) return;
+          getBallEventsByInnings(selectedInningsId)
+            .then((beRes) => {
+              setData((prev) => ({
+                ...prev,
+                [selectedInningsId]: {
+                  scorecard:
+                    payload.scorecard ??
+                    prev[selectedInningsId]?.scorecard ??
+                    null,
+                  ballEvents: beRes.data,
+                },
+              }));
+            })
+            .catch(() => {
+              setData((prev) => {
+                const existing = prev[selectedInningsId] || {
+                  scorecard: null,
+                  ballEvents: [],
+                };
+                return {
+                  ...prev,
+                  [selectedInningsId]: {
+                    scorecard: payload.scorecard ?? existing.scorecard,
+                    ballEvents: existing.ballEvents.slice(0, -1),
+                  },
+                };
+              });
+            });
+        };
+
+        socket.on("ball:recorded", handleBallRecorded);
+        socket.on("ball:undone", handleBallUndone);
+
+        cleanup = () => {
+          socket.off("ball:recorded", handleBallRecorded);
+          socket.off("ball:undone", handleBallUndone);
+          leaveMatch(matchDetail.id);
+        };
+      },
+    );
+
+    return () => {
+      cleanup?.();
+    };
+  }, [selectedInningsId, matchDetail.id]);
+
+  useEffect(() => {
+    if (allInnings.length === 0) return;
+
+    const stillExists = allInnings.find((i) => i.id === selectedInningsId);
+    if (!stillExists) {
+      const latestInnings = allInnings[allInnings.length - 1];
+      setSelectedInningsId(latestInnings.id);
+    }
+  }, [allInnings]);
 
   if (allInnings.length === 0) return null;
 
@@ -489,23 +601,42 @@ export function ViewerScoreboardContainer({
   return (
     <div className="space-y-3">
       {allInnings.length > 1 && (
-        <div className="flex bg-gray-100 p-1.5 rounded-xl gap-1">
-          {allInnings.map((inn) => (
-            <button
-              key={inn.id}
-              onClick={() => {
-                setSelectedInningsId(inn.id);
-                onInningsChange?.(inn);
-              }}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                selectedInningsId === inn.id
-                  ? "bg-white text-primary shadow-sm"
-                  : "text-muted hover:text-foreground"
-              }`}
-            >
-              Innings {inn.innings_number}
-            </button>
-          ))}
+        <div className="flex bg-gray-100 p-1.5 rounded-xl gap-1 overflow-x-auto">
+          {allInnings.map((inn) => {
+            const isSuperOver = inn.is_super_over || inn.innings_number > 2;
+            const teamName =
+              inn.battingTeam?.name ||
+              (inn.batting_team_id === matchDetail.team_a_id
+                ? matchDetail.teamA?.name
+                : matchDetail.teamB?.name) ||
+              `Team ${inn.batting_team_id}`;
+            const shortName = teamName.slice(0, 3).toUpperCase();
+
+            return (
+              <button
+                key={inn.id}
+                onClick={() => {
+                  setSelectedInningsId(inn.id);
+                  onInningsChange?.(inn);
+                }}
+                className={`flex-1 py-2 px-2 text-xs font-bold rounded-lg transition-all min-w-[80px] whitespace-nowrap ${
+                  selectedInningsId === inn.id
+                    ? "bg-white text-primary shadow-sm"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                {isSuperOver ? (
+                  <span className="flex items-center gap-1">
+                    <span className="text-[10px]">🎯</span>
+                    {shortName}
+                    {inn.super_over_number > 1 && ` ${inn.super_over_number}`}
+                  </span>
+                ) : (
+                  <span>{shortName}</span>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
 

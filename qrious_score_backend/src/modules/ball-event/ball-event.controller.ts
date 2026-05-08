@@ -21,8 +21,30 @@ export class BallEventController {
 
   @Roles('admin', 'scorer')
   @Post()
-  recordBall(@Body() dto: CreateBallEventDto) {
-    return this.ballEventService.recordBall(dto);
+  async recordBall(@Body() dto: CreateBallEventDto) {
+    const result = await this.ballEventService.recordBall(dto);
+    const { ballEvent, innings } = result.data;
+
+    this.ballEventService
+      .getScorecard(dto.innings_id)
+      .then((scorecardRes) => {
+        this.ballEventService.emitBallRecorded(
+          innings.match_id,
+          ballEvent,
+          innings,
+          scorecardRes.data,
+        );
+      })
+      .catch(() => {
+        this.ballEventService.emitBallRecorded(
+          innings.match_id,
+          ballEvent,
+          innings,
+          null,
+        );
+      });
+
+    return result;
   }
 
   @Get('innings/:inningsId')
@@ -42,7 +64,29 @@ export class BallEventController {
 
   @Roles('admin', 'scorer')
   @Delete('innings/:inningsId/undo')
-  undoLast(@Param('inningsId') inningsId: number) {
-    return this.ballEventService.undoLast(Number(inningsId));
+  async undoLast(@Param('inningsId') inningsId: number) {
+    const result = await this.ballEventService.undoLast(Number(inningsId));
+    const { innings } = result.data;
+
+    this.ballEventService
+      .getScorecard(Number(inningsId))
+      .then((scorecardRes) => {
+        this.ballEventService.emitBallUndone(
+          innings.match_id,
+          innings,
+          0,
+          scorecardRes.data,
+        );
+      })
+      .catch(() => {
+        this.ballEventService.emitBallUndone(
+          innings.match_id,
+          innings,
+          0,
+          null,
+        );
+      });
+
+    return result;
   }
 }

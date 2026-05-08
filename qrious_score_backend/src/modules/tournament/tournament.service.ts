@@ -9,6 +9,7 @@ import { Op, WhereOptions } from 'sequelize';
 import { Tournament } from './models/tournament.model';
 import { TournamentTeam } from './models/tournament-team.model';
 import { Team } from '../teams/models/teams.model';
+import { Player } from '../players/models/players.model';
 
 import { CreateTournamentDto } from './dtos/create-tournament.dto';
 import { UpdateTournamentDto } from './dtos/update-tournament.dto';
@@ -16,6 +17,7 @@ import { AssignTeamsDto } from './dtos/assign-teams.dto';
 
 import { successResponse } from 'src/common/utils/response.util';
 import { SuccessResponse } from 'src/common/types/response.type';
+import { PointsTableService } from '../points-table/points-table.service';
 
 @Injectable()
 export class TournamentService {
@@ -25,6 +27,14 @@ export class TournamentService {
 
     @InjectModel(TournamentTeam)
     private readonly tournamentTeamModel: typeof TournamentTeam,
+
+    @InjectModel(Team)
+    private readonly teamModel: typeof Team,
+
+    @InjectModel(Player)
+    private readonly playerModel: typeof Player,
+
+    private readonly pointsTableService: PointsTableService,
   ) {}
   async create(
     data: CreateTournamentDto,
@@ -168,6 +178,59 @@ export class TournamentService {
 
     const uniqueTeamIds = [...new Set(team_ids)];
 
+    const teamsWithPlayers = await this.teamModel.findAll({
+      where: { id: uniqueTeamIds },
+      include: [
+        {
+          model: Player,
+          as: 'players',
+          through: { attributes: [] },
+          attributes: ['id', 'name'],
+        },
+      ],
+    });
+
+    const playerTeamMap = new Map<number, { name: string; teamName: string }>();
+    const duplicates: { playerName: string; teams: string[] }[] = [];
+
+    for (const team of teamsWithPlayers) {
+      for (const player of team.players ?? []) {
+        const existing = playerTeamMap.get(player.id);
+        if (existing) {
+          const duplicateEntry = duplicates.find(
+            (d) => d.playerName === player.name,
+          );
+          if (duplicateEntry) {
+            if (!duplicateEntry.teams.includes(team.name)) {
+              duplicateEntry.teams.push(team.name);
+            }
+          } else {
+            duplicates.push({
+              playerName: player.name,
+              teams: [existing.teamName, team.name],
+            });
+          }
+        } else {
+          playerTeamMap.set(player.id, {
+            name: player.name,
+            teamName: team.name,
+          });
+        }
+      }
+    }
+
+    if (duplicates.length > 0) {
+      if (duplicates.length === 1) {
+        const d = duplicates[0];
+        throw new BadRequestException(
+          `"${d.playerName}" belongs to ${d.teams.length} teams. Remove from one team.`,
+        );
+      }
+      throw new BadRequestException(
+        `${duplicates.length} players are assigned to multiple teams. Please resolve conflicts.`,
+      );
+    }
+
     const payload = uniqueTeamIds.map((team_id) => ({
       tournament_id,
       team_id,
@@ -178,6 +241,11 @@ export class TournamentService {
     });
 
     await this.tournamentTeamModel.bulkCreate(payload);
+
+    await this.pointsTableService.initializeForTournament(
+      tournament_id,
+      uniqueTeamIds,
+    );
 
     return successResponse('Teams assigned successfully', null);
   }

@@ -15,6 +15,7 @@ import { StartInningsDto } from './dtos/start-innings.dto';
 import { UpdateInningsPlayersDto } from './dtos/update-innings-players.dto';
 import { SuccessResponse } from 'src/common/types/response.type';
 import { successResponse } from 'src/common/utils/response.util';
+import { ScoringGateway } from '../scoring-gateway/scoring.gateway';
 
 @Injectable()
 export class InningsService {
@@ -30,6 +31,8 @@ export class InningsService {
 
     @InjectModel(TeamPlayer)
     private teamPlayerModel: typeof TeamPlayer,
+
+    private readonly scoringGateway: ScoringGateway,
   ) {}
 
   private async validateBattingPlayers(
@@ -204,5 +207,15 @@ export class InningsService {
     });
 
     return successResponse('Innings players updated successfully', updated);
+  }
+
+  emitInningsStarted(matchId: number, innings: Innings) {
+    this.scoringGateway.emitToMatch(matchId, 'innings:started', { innings });
+  }
+
+  emitInningsPlayersUpdated(matchId: number, innings: Innings) {
+    this.scoringGateway.emitToMatch(matchId, 'innings:playersUpdated', {
+      innings,
+    });
   }
 }

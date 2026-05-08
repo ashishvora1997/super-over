@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Coins, ChevronDown } from "lucide-react";
+import { Coins } from "lucide-react";
 import { FormModal } from "@/app/components/ui/modal/form-modal";
 import { RoleGuard } from "@/app/components/auth/role-guard";
 import { Match } from "@/app/types/match.types";
+import { Select } from "@/app/components/ui/select";
 
 import toast from "react-hot-toast";
 import { getErrorMessage } from "@/app/utils/error-handler";
@@ -126,31 +127,14 @@ export function TossSection({ match }: Props) {
         submitText="Save Toss"
         loading={loading}
       >
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-            Toss Winner
-          </label>
-          <div className="relative">
-            <select
-              value={winnerId}
-              onChange={(e) =>
-                setWinnerId(e.target.value ? Number(e.target.value) : "")
-              }
-              className="w-full px-4 py-2.5 border border-border rounded-xl text-sm bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 appearance-none"
-            >
-              <option value="">Select team...</option>
-              {teams.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              size={14}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
-            />
-          </div>
-        </div>
+        <Select
+          label="Toss Winner"
+          required
+          value={String(winnerId)}
+          onChange={(val) => setWinnerId(val ? Number(val) : "")}
+          placeholder="Select team..."
+          options={teams.map((t) => ({ label: t.name, value: String(t.id) }))}
+        />
 
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-muted uppercase tracking-wider">

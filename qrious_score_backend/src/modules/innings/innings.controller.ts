@@ -22,8 +22,13 @@ export class InningsController {
 
   @Roles('admin', 'scorer')
   @Post(':id/start')
-  start(@Param('id') id: number, @Body() dto: StartInningsDto) {
-    return this.inningsService.start(Number(id), dto);
+  async start(@Param('id') id: number, @Body() dto: StartInningsDto) {
+    const result = await this.inningsService.start(Number(id), dto);
+    const innings = result.data;
+
+    this.inningsService.emitInningsStarted(innings.match_id, innings);
+
+    return result;
   }
 
   @Get(':id')
@@ -38,7 +43,15 @@ export class InningsController {
 
   @Roles('admin', 'scorer')
   @Patch(':id/players')
-  updatePlayers(@Param('id') id: number, @Body() dto: UpdateInningsPlayersDto) {
-    return this.inningsService.updatePlayers(Number(id), dto);
+  async updatePlayers(
+    @Param('id') id: number,
+    @Body() dto: UpdateInningsPlayersDto,
+  ) {
+    const result = await this.inningsService.updatePlayers(Number(id), dto);
+    const innings = result.data;
+
+    this.inningsService.emitInningsPlayersUpdated(innings.match_id, innings);
+
+    return result;
   }
 }

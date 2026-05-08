@@ -16,6 +16,7 @@ import { SuccessResponse } from 'src/common/types/response.type';
 import { InjectModel } from '@nestjs/sequelize';
 import { Team } from '../teams/models/teams.model';
 import { Player } from '../players/models/players.model';
+import { Innings } from '../innings/models/innings.model';
 
 const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
   scheduled: ['live'],
@@ -134,7 +135,7 @@ export class MatchService {
         {
           model: Team,
           as: 'teamA',
-          attributes: ['id', 'name'],
+          attributes: ['id', 'name', 'wicket_keeper_id'],
           include: [
             { model: Player, as: 'players', attributes: ['id', 'name'] },
           ],
@@ -142,7 +143,7 @@ export class MatchService {
         {
           model: Team,
           as: 'teamB',
-          attributes: ['id', 'name'],
+          attributes: ['id', 'name', 'wicket_keeper_id'],
           include: [
             { model: Player, as: 'players', attributes: ['id', 'name'] },
           ],
@@ -173,6 +174,21 @@ export class MatchService {
         { model: Team, as: 'teamA', attributes: ['id', 'name'] },
         { model: Team, as: 'teamB', attributes: ['id', 'name'] },
         { model: Team, as: 'winner', attributes: ['id', 'name'] },
+        {
+          model: Innings,
+          attributes: [
+            'id',
+            'innings_number',
+            'batting_team_id',
+            'total_runs',
+            'wickets',
+            'overs',
+            'balls',
+            'status',
+            'is_super_over',
+          ],
+          required: false,
+        },
       ],
     });
     return successResponse('Matches retrieved successfully', matches);
@@ -203,6 +219,12 @@ export class MatchService {
     if (match.status === 'live' && (data.team_a_id || data.team_b_id)) {
       throw new BadRequestException(
         'Cannot change teams after match has started',
+      );
+    }
+
+    if (match.status === 'live' && data.overs_per_side !== undefined && data.overs_per_side !== match.overs_per_side) {
+      throw new BadRequestException(
+        'Cannot change overs per side after match has started',
       );
     }
 

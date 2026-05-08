@@ -47,6 +47,22 @@ export class Match extends Model {
   @Column
   declare winner_team_id: number;
 
+  @Column({
+    type: DataType.ENUM('win', 'tie', 'no_result', 'super_over', 'draw'),
+    allowNull: true,
+  })
+  declare result: 'win' | 'tie' | 'no_result' | 'super_over' | 'draw' | null;
+
+  @Column({ defaultValue: false })
+  declare is_super_over: boolean;
+
+  @Column({ defaultValue: 0 })
+  declare super_over_number: number;
+
+  @ForeignKey(() => Team)
+  @Column({ allowNull: true })
+  declare super_over_chasing_team_id: number;
+
   @BelongsTo(() => Tournament)
   declare tournament: Tournament;
 
