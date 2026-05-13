@@ -35,3 +35,17 @@ export const resetPassword = async (
   const res = await api.post("/auth/reset-password", data);
   return res.data;
 };
+
+export const verifyEmail = async (
+  data: { userId: number; otp: string },
+): Promise<SuccessResponse<AuthResponse>> => {
+  const res = await api.post("/auth/verify-email", data);
+  return res.data;
+};
+
+export const resendOTP = async (
+  data: { email: string },
+): Promise<SuccessResponse<{ expiresIn: number; remainingAttempts: number }>> => {
+  const res = await api.post("/auth/resend-otp", data);
+  return res.data;
+};
