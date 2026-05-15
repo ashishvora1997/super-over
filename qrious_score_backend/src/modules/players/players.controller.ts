@@ -12,30 +12,30 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Req,
+  Put,
 } from '@nestjs/common';
 import { PlayersService } from './players.service';
 import { CreatePlayerDto } from './dtos/create-player.dto';
 import { UpdatePlayerDto } from './dtos/update-player.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/common/guards/roles.guard';
-import { Roles } from 'src/common/decorators/roles.decorator';
+
 import { FindPlayersQuery } from './interfaces/find-players-query.interface';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { multerConfig } from 'src/database/config/multer.config';
+import { UpsertProfileDto } from './dtos/upsert-profile.dto';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard)
 @Controller('players')
 export class PlayersController {
   constructor(private playersService: PlayersService) {}
 
   @Post()
-  @Roles('scorer')
   create(@Body() body: CreatePlayerDto) {
     return this.playersService.create(body);
   }
 
   @Post('bulk-upload')
-  @Roles('scorer')
   @UseInterceptors(FileInterceptor('file', multerConfig))
   async bulkUpload(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
@@ -55,20 +55,33 @@ export class PlayersController {
     return this.playersService.findAll(query);
   }
 
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async getMyProfile(@Req() req: Request & { user: { id: number } }) {
+    return this.playersService.getMyProfile(req.user.id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.playersService.findOne(+id);
   }
 
   @Patch(':id')
-  @Roles('scorer')
   update(@Param('id') id: string, @Body() body: UpdatePlayerDto) {
     return this.playersService.update(+id, body);
   }
 
   @Delete(':id')
-  @Roles('admin')
   delete(@Param('id') id: string) {
     return this.playersService.delete(+id);
+  }
+
+  @Put('profile')
+  @UseGuards(JwtAuthGuard)
+  async upsertProfile(
+    @Req() req: Request & { user: { id: number } },
+    @Body() dto: UpsertProfileDto,
+  ) {
+    return this.playersService.upsertProfile(req.user.id, dto);
   }
 }
