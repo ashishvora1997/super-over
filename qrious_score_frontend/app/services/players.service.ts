@@ -9,12 +9,6 @@ interface GetPlayersParams {
   role?: string;
 }
 
-export interface BulkUploadResult {
-  success_count: number;
-  failed_count: number;
-  errors: { row: number; error: string }[];
-}
-
 export const getPlayers = async (
   params?: GetPlayersParams,
 ): Promise<SuccessResponse<Player[]>> => {
@@ -46,16 +40,5 @@ export const deletePlayer = async (
   id: number,
 ): Promise<SuccessResponse<null>> => {
   const res = await api.delete(`/players/${id}`);
-  return res.data;
-};
-
-export const bulkUploadPlayers = async (
-  file: File,
-): Promise<SuccessResponse<BulkUploadResult>> => {
-  const formData = new FormData();
-  formData.append("file", file);
-  const res = await api.post("/players/bulk-upload", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
   return res.data;
 };

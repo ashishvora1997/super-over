@@ -1,4 +1,3 @@
-import { BulkUploadResult } from "../services/teams.service";
 import { SuccessResponse } from "./api.types";
 
 export interface Team {
@@ -30,6 +29,7 @@ export interface Team {
   }[];
 
   user_id?: number | null;
+  created_by?: number;
 
   createdAt: string;
   updatedAt: string;
@@ -53,7 +53,6 @@ export interface TeamState {
     data: Partial<Team>,
   ) => Promise<SuccessResponse<Team>>;
   deleteTeam: (id: number) => Promise<SuccessResponse<null>>;
-  bulkUpload: (file: File) => Promise<SuccessResponse<BulkUploadResult>>;
 
   updateCaptainInStore: (team_id: number, player_id: number) => void;
   updateWicketKeeperInStore: (team_id: number, player_id: number) => void;

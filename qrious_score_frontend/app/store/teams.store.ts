@@ -6,7 +6,6 @@ import {
   deleteTeam,
   setCaptain as setCaptainAPI,
   getTeamsList,
-  bulkUploadTeams,
 } from "../services/teams.service";
 import { Team, TeamState } from "../types/teams.types";
 import { SuccessResponse } from "@/app/types/api.types";
@@ -107,13 +106,5 @@ export const useTeamStore = create<TeamState>((set, get) => ({
         t.id === teamId ? { ...t, wicket_keeper_id: playerId } : t,
       ),
     }));
-  },
-
-  bulkUpload: async (file: File) => {
-    const res = await bulkUploadTeams(file);
-    if (res.data?.success_count > 0) {
-      await get().fetchTeams(get().search, get().page);
-    }
-    return res;
   },
 }));

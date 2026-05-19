@@ -1,5 +1,4 @@
 import { SuccessResponse } from "./api.types";
-import { BulkUploadResult } from "../services/players.service";
 
 export interface Player {
   id: number;
@@ -36,5 +35,4 @@ export interface PlayerState {
     data: Partial<Player>,
   ) => Promise<SuccessResponse<Player>>;
   deletePlayer: (id: number) => Promise<SuccessResponse<null>>;
-  bulkUpload: (file: File) => Promise<SuccessResponse<BulkUploadResult>>;
 }

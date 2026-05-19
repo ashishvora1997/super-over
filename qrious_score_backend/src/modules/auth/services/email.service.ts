@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { Transporter } from 'nodemailer';
@@ -7,19 +7,24 @@ import { getOTPEmailTemplate } from 'src/common/templates/otp-email.template';
 
 @Injectable()
 export class EmailService {
-  private readonly logger = new Logger(EmailService.name);
-
   private transporter: Transporter;
 
   constructor(private readonly configService: ConfigService) {
+    const host = this.configService.get<string>('SMTP_HOST');
+    const port = Number(this.configService.get<number>('SMTP_PORT', 587));
+    const secure = this.configService.get<string>('SMTP_SECURE') === 'true';
+
+    const user = this.configService.get<string>('SMTP_USER');
+    const pass = this.configService.get<string>('SMTP_PASS');
+
     this.transporter = nodemailer.createTransport({
-      host: this.configService.get<string>('SMTP_HOST'),
-      port: this.configService.get<number>('SMTP_PORT', 587),
-      secure: this.configService.get<boolean>('SMTP_SECURE', false),
+      host,
+      port,
+      secure,
 
       auth: {
-        user: this.configService.get<string>('SMTP_USER'),
-        pass: this.configService.get<string>('SMTP_PASS'),
+        user,
+        pass,
       },
     });
   }
@@ -32,7 +37,7 @@ export class EmailService {
 
     const fromEmail = this.configService.get<string>(
       'SMTP_FROM_EMAIL',
-      'noreply@qriousscore.com',
+      this.configService.get<string>('SMTP_USER'),
     );
 
     return `"${fromName}" <${fromEmail}>`;
@@ -43,21 +48,16 @@ export class EmailService {
     userName: string,
     otpCode: string,
   ): Promise<void> {
-    this.logger.log(`Sending OTP email to ${toEmail}`);
-
     try {
       const htmlTemplate = getOTPEmailTemplate(userName, otpCode);
 
-      await this.transporter.sendMail({
+      const info = await this.transporter.sendMail({
         from: this.fromAddress,
         to: toEmail,
         subject: 'Your verification code',
         html: htmlTemplate,
       });
-
-      this.logger.log(`OTP email sent to ${toEmail}`);
     } catch (err) {
-      this.logger.error(`Failed to send OTP email to ${toEmail}`, err);
       throw err;
     }
   }
@@ -66,10 +66,8 @@ export class EmailService {
     toEmail: string,
     resetLink: string,
   ): Promise<void> {
-    this.logger.log(`Sending password reset email to ${toEmail}`);
-
     try {
-      await this.transporter.sendMail({
+      const info = await this.transporter.sendMail({
         from: this.fromAddress,
         to: toEmail,
         subject: 'Reset Your Password',
@@ -102,14 +100,7 @@ export class EmailService {
           </div>
         `,
       });
-
-      this.logger.log(`Password reset email sent to ${toEmail}`);
     } catch (err) {
-      this.logger.error(
-        `Failed to send password reset email to ${toEmail}`,
-        err,
-      );
-
       throw err;
     }
   }
@@ -117,8 +108,9 @@ export class EmailService {
   async verifyConnection(): Promise<boolean> {
     try {
       await this.transporter.verify();
+
       return true;
-    } catch {
+    } catch (err) {
       return false;
     }
   }

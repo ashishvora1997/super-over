@@ -61,6 +61,28 @@ export class AuthService {
     const existingUser = await this.usersService.findByEmail(data.email);
 
     if (existingUser) {
+      if (!existingUser.is_email_verified) {
+        const hashedPassword = await bcrypt.hash(data.password, 10);
+        await existingUser.update({
+          password: hashedPassword,
+          name: data.name,
+        });
+
+        await this.sendOTPToUser(
+          existingUser.id!,
+          existingUser.email,
+          data.name,
+        );
+
+        return successResponse(
+          'An account with this email already exists but is not verified. A new verification code has been sent.',
+          {
+            userId: existingUser.id,
+            email: existingUser.email,
+          },
+        );
+      }
+
       throw new BadRequestException('Email already exists');
     }
 
