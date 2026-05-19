@@ -35,16 +35,6 @@ export class PlayersController {
     return this.playersService.create(body);
   }
 
-  @Post('bulk-upload')
-  @UseInterceptors(FileInterceptor('file', multerConfig))
-  async bulkUpload(@UploadedFile() file: Express.Multer.File) {
-    if (!file) {
-      throw new BadRequestException('File is required');
-    }
-
-    return this.playersService.handleBulkUpload(file);
-  }
-
   @Get('list')
   async findAllPlayersList() {
     return this.playersService.findAllPlayersList();

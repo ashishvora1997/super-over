@@ -8,11 +8,11 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy/jwt.strategy';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/common/guards/roles.guard';
 
 import { UsersModule } from '../users/users.module';
-import { EmailModule } from 'src/email/email.module';
+import { EmailService } from './services/email.service';
 import { PasswordReset } from './password-reset.model';
+import { User } from '../users/models/user.model';
 
 @Module({
   imports: [
@@ -31,18 +31,10 @@ import { PasswordReset } from './password-reset.model';
     }),
 
     UsersModule,
-    EmailModule,
-    SequelizeModule.forFeature([PasswordReset]),
+    SequelizeModule.forFeature([PasswordReset, User]),
   ],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard, RolesGuard],
+  providers: [AuthService, EmailService, JwtStrategy, JwtAuthGuard],
   controllers: [AuthController],
-  exports: [
-    AuthService,
-    JwtStrategy,
-    JwtAuthGuard,
-    RolesGuard,
-    PassportModule,
-    JwtModule,
-  ],
+  exports: [AuthService, JwtStrategy, JwtAuthGuard, PassportModule, JwtModule],
 })
 export class AuthModule {}

@@ -44,7 +44,7 @@ export const verifyEmail = async (
 };
 
 export const resendOTP = async (
-  data: { email: string },
+  data: { userId: number },
 ): Promise<SuccessResponse<{ expiresIn: number; remainingAttempts: number }>> => {
   const res = await api.post("/auth/resend-otp", data);
   return res.data;

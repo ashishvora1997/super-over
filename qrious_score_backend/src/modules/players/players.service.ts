@@ -16,11 +16,6 @@ import {
 } from './interfaces/find-players-query.interface';
 import { SuccessResponse } from 'src/common/types/response.type';
 import { getPagination } from 'src/common/utils/pagination';
-import { parseUploadedFile } from 'src/common/utils/csv-parser.util';
-import {
-  FieldRule,
-  validateCSVRow,
-} from 'src/common/utils/csv-row-validator.util';
 import { User } from '../users/models/user.model';
 import { UpsertProfileDto } from './dtos/upsert-profile.dto';
 
@@ -193,112 +188,5 @@ export class PlayersService {
     }
 
     return successResponse('Profile retrieved successfully', player);
-  }
-
-  async handleBulkUpload(file: Express.Multer.File) {
-    const expectedHeaders = [
-      'name',
-      'playing_role',
-      'batting_style',
-      'bowling_style',
-      'date_of_birth',
-      'location',
-      'gender',
-    ];
-
-    const rows = parseUploadedFile(
-      file.buffer,
-      file.mimetype,
-      file.originalname,
-      expectedHeaders,
-    );
-
-    const rules: FieldRule[] = [
-      { field: 'name', required: true, type: 'string' },
-      {
-        field: 'playing_role',
-        required: true,
-        type: 'string',
-        validValues: [
-          'top_order_batter',
-          'middle_order_batter',
-          'opening_batter',
-          'wicket_keeper_batter',
-          'wicket_keeper',
-          'bowler',
-          'all_rounder',
-          'lower_order_batter',
-          'none',
-        ],
-      },
-      {
-        field: 'batting_style',
-        required: false,
-        type: 'string',
-        validValues: ['right_hand', 'left_hand', 'none'],
-      },
-      {
-        field: 'bowling_style',
-        required: false,
-        type: 'string',
-        validValues: [
-          'right_arm_fast',
-          'right_arm_medium',
-          'left_arm_fast',
-          'left_arm_medium',
-          'slow_left_arm_orthodox',
-          'slow_left_arm_chinaman',
-          'right_arm_off_break',
-          'right_arm_leg_break',
-          'none',
-        ],
-      },
-      { field: 'date_of_birth', required: false, type: 'date' },
-      { field: 'location', required: false, type: 'string' },
-      {
-        field: 'gender',
-        required: false,
-        type: 'string',
-        validValues: ['male', 'female'],
-      },
-    ];
-
-    const errors: { row: number; error: string }[] = [];
-
-    for (let i = 0; i < rows.length; i++) {
-      const rowNumber = i + 2;
-      const error = validateCSVRow(rows[i], rules);
-      if (error) {
-        errors.push({ row: rowNumber, error });
-      }
-    }
-
-    if (errors.length > 0) {
-      return successResponse('Validation failed. No players were imported.', {
-        success_count: 0,
-        failed_count: errors.length,
-        errors,
-      });
-    }
-
-    const playersToInsert = rows.map((row) => ({
-      name: row.name.trim(),
-      playing_role: row.playing_role.trim(),
-      batting_style: row.batting_style?.trim() || null,
-      bowling_style: row.bowling_style?.trim() || null,
-      date_of_birth: row.date_of_birth || null,
-      location: row.location?.trim() || null,
-      gender: row.gender?.trim() || null,
-    }));
-
-    await this.playerModel.sequelize.transaction(async (t) => {
-      await this.playerModel.bulkCreate(playersToInsert, { transaction: t });
-    });
-
-    return successResponse('Bulk upload completed successfully.', {
-      success_count: playersToInsert.length,
-      failed_count: 0,
-      errors: [],
-    });
   }
 }

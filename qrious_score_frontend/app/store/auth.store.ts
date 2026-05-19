@@ -5,6 +5,8 @@ export interface User {
   name: string;
   email: string;
   role: string;
+  is_profile_complete?: boolean;
+  is_email_verified?: boolean;
 }
 
 interface AuthState {
@@ -14,6 +16,7 @@ interface AuthState {
 
   setAuth: (data: { user: User; token: string }) => void;
   loadUserFromStorage: () => void;
+  updateUser: (fields: Partial<User>) => void;
   logout: () => void;
 }
 
@@ -39,12 +42,29 @@ export const useAuthStore = create<AuthState>((set) => ({
         .find((row) => row.startsWith("token="))
         ?.split("=")[1];
 
-    const user = localStorage.getItem("user");
+    const userStr = localStorage.getItem("user");
+    let parsedUser = null;
+    if (userStr && userStr !== "undefined") {
+      try {
+        parsedUser = JSON.parse(userStr);
+      } catch (e) {
+        console.error("Failed to parse user from storage:", e);
+      }
+    }
 
     set({
       token: token || null,
-      user: user ? JSON.parse(user) : null,
+      user: parsedUser,
       isInitialized: true,
+    });
+  },
+
+  updateUser: (fields) => {
+    set((state) => {
+      if (!state.user) return state;
+      const updated = { ...state.user, ...fields };
+      localStorage.setItem("user", JSON.stringify(updated));
+      return { user: updated };
     });
   },
 
