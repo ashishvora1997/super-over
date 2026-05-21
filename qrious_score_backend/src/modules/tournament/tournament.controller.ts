@@ -8,6 +8,7 @@ import {
   Patch,
   Delete,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 
 import { TournamentService } from './tournament.service';
@@ -15,19 +16,26 @@ import { TournamentService } from './tournament.service';
 import { CreateTournamentDto } from './dtos/create-tournament.dto';
 import { UpdateTournamentDto } from './dtos/update-tournament.dto';
 import { AssignTeamsDto } from './dtos/assign-teams.dto';
+import { UpsertRulesDto } from './dtos/upsert-rules.dto';
+import { AddScorerDto } from './dtos/add-scorer.dto';
+import { RemoveScorerDto } from './dtos/remove-scorer.dto';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/common/guards/roles.guard';
-import { Roles } from 'src/common/decorators/roles.decorator';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+interface RequestWithUser extends Request {
+  user: {
+    id: number;
+    email: string;
+  };
+}
+
+@UseGuards(JwtAuthGuard)
 @Controller('tournaments')
 export class TournamentController {
   constructor(private readonly tournamentService: TournamentService) {}
 
   @Post()
-  @Roles('admin', 'scorer')
-  create(@Body() dto: CreateTournamentDto) {
-    console.log('from the frontend:', dto);
+  create(@Body() dto: CreateTournamentDto, @Req() req: RequestWithUser) {
+    dto.created_by = req.user.id;
     return this.tournamentService.create(dto);
   }
 
@@ -36,11 +44,13 @@ export class TournamentController {
     @Query('search') search?: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
+    @Req() req?: RequestWithUser,
   ) {
     return this.tournamentService.findAll(
       search,
       Number(page) || 1,
       Number(limit) || 10,
+      req?.user?.id,
     );
   }
 
@@ -50,20 +60,59 @@ export class TournamentController {
   }
 
   @Patch(':id')
-  @Roles('admin', 'scorer')
-  update(@Param('id') id: number, @Body() dto: UpdateTournamentDto) {
-    return this.tournamentService.update(Number(id), dto);
+  update(
+    @Param('id') id: number,
+    @Body() dto: UpdateTournamentDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.tournamentService.update(Number(id), dto, req.user.id);
   }
 
   @Delete(':id')
-  @Roles('admin')
-  delete(@Param('id') id: number) {
-    return this.tournamentService.delete(Number(id));
+  delete(@Param('id') id: number, @Req() req: RequestWithUser) {
+    return this.tournamentService.delete(Number(id), req.user.id);
   }
 
   @Post('assign-teams')
-  @Roles('scorer')
   assignTeams(@Body() dto: AssignTeamsDto) {
     return this.tournamentService.assignTeams(dto);
+  }
+
+  @Delete(':id/teams/:teamId')
+  removeTeam(
+    @Param('id') id: number,
+    @Param('teamId') teamId: number,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.tournamentService.removeTeam(
+      Number(id),
+      Number(teamId),
+      req.user.id,
+    );
+  }
+
+  @Get(':id/rules')
+  getRules(@Param('id') id: number) {
+    return this.tournamentService.getRules(Number(id));
+  }
+
+  @Post('rules')
+  upsertRules(@Body() dto: UpsertRulesDto, @Req() req: RequestWithUser) {
+    return this.tournamentService.upsertRules(dto, req.user.id);
+  }
+
+  @Get(':id/scorers')
+  getScorers(@Param('id') id: number) {
+    return this.tournamentService.getScorers(Number(id));
+  }
+
+  @Post('scorers/add')
+  addScorer(@Body() dto: AddScorerDto, @Req() req: RequestWithUser) {
+    return this.tournamentService.addScorer(dto, req.user.id);
+  }
+
+  @Post('scorers/remove')
+  removeScorer(@Body() dto: RemoveScorerDto, @Req() req: RequestWithUser) {
+    return this.tournamentService.removeScorer(dto, req.user.id);
   }
 }
