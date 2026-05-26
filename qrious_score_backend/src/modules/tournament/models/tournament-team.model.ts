@@ -1,4 +1,4 @@
-import { Table, Column, Model, ForeignKey } from 'sequelize-typescript';
+import { Table, Column, Model, ForeignKey, BelongsTo } from 'sequelize-typescript';
 
 import { Tournament } from './tournament.model';
 import { Team } from '../../teams/models/teams.model';
@@ -12,4 +12,7 @@ export class TournamentTeam extends Model {
   @ForeignKey(() => Team)
   @Column
   declare team_id: number;
+
+  @BelongsTo(() => Team)
+  declare team: Team;
 }

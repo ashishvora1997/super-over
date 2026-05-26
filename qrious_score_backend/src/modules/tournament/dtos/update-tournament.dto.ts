@@ -7,7 +7,15 @@ export class UpdateTournamentDto {
 
   @IsOptional()
   @IsString()
-  location?: string;
+  city?: string;
+
+  @IsOptional()
+  @IsString()
+  organiser_name?: string;
+
+  @IsOptional()
+  @IsString()
+  organiser_email?: string;
 
   @IsOptional()
   @IsDateString()
@@ -17,7 +25,4 @@ export class UpdateTournamentDto {
   @IsDateString()
   end_date?: string;
 
-  @IsOptional()
-  @IsIn(['upcoming', 'ongoing', 'completed'])
-  status?: 'upcoming' | 'ongoing' | 'completed';
 }
