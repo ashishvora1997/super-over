@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import {
   getTeams,
+  getTeamById,
   createTeam,
   updateTeam,
   deleteTeam,
@@ -37,6 +38,27 @@ export const useTeamStore = create<TeamState>((set, get) => ({
       });
     } finally {
       set({ loading: false });
+    }
+  },
+
+  fetchTeamById: async (id: number) => {
+    try {
+      const res = await getTeamById(id);
+      const fullTeam = res.data;
+
+      set((state) => {
+        const exists = state.teams.some((t) => t.id === id);
+        return {
+          teams: exists
+            ? state.teams.map((t) => (t.id === id ? fullTeam : t))
+            : [...state.teams, fullTeam],
+        };
+      });
+
+      return fullTeam;
+    } catch (error) {
+      console.error("Failed to fetch team:", error);
+      return null;
     }
   },
 

@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { getErrorMessage } from "@/app/utils/error-handler";
-import { PublicRoute } from "@/app/components/auth/public-route";
 import { Input } from "@/app/components/ui/input";
 import { Button } from "@/app/components/ui/button";
 
@@ -52,71 +51,73 @@ export default function RegisterPage() {
       const res = await registerUser(data);
       toast.success("Account created successfully 🎉");
 
-      // Register returns { userId, email } — no token yet (comes after OTP verification)
-      const { userId, email } = res.data as unknown as { userId: number; email: string };
-      window.location.href = `/verify-email?userId=${userId}&email=${encodeURIComponent(email)}`;
+      const { userId, email } = res.data as unknown as {
+        userId: number;
+        email: string;
+      };
+      router.replace(
+        `/verify-email?userId=${userId}&email=${encodeURIComponent(email)}`,
+      );
     } catch (error: unknown) {
       toast.error(getErrorMessage(error));
     }
   };
 
   return (
-    <PublicRoute>
-      <div className="w-full max-w-md mx-auto bg-white border border-border shadow-md p-8 rounded-3xl">
-        <div className="w-full max-w-md">
-          <h1 className="text-3xl font-semibold text-center mb-8">
-            Create Account
-          </h1>
+    <div className="w-full max-w-md mx-auto bg-white border border-border shadow-md p-8 rounded-3xl">
+      <div className="w-full max-w-md">
+        <h1 className="text-3xl font-semibold text-center mb-8">
+          Create Account
+        </h1>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div>
-              <Input
-                {...register("name")}
-                label="Full Name"
-                required
-                placeholder="Enter your full name"
-                error={errors.name?.message}
-              />
-            </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <div>
+            <Input
+              {...register("name")}
+              label="Full Name"
+              required
+              placeholder="Enter your full name"
+              error={errors.name?.message}
+            />
+          </div>
 
-            <div>
-              <Input
-                {...register("email")}
-                label="Email"
-                required
-                type="email"
-                placeholder="Enter your email"
-                error={errors.email?.message}
-              />
-            </div>
+          <div>
+            <Input
+              {...register("email")}
+              label="Email"
+              required
+              type="email"
+              placeholder="Enter your email"
+              error={errors.email?.message}
+            />
+          </div>
 
-            <div>
-              <Input
-                type="password"
-                label="Password"
-                required
-                {...register("password")}
-                placeholder="Create a strong password"
-                error={errors.password?.message}
-              />
-            </div>
+          <div>
+            <Input
+              type="password"
+              label="Password"
+              required
+              {...register("password")}
+              placeholder="Create a strong password"
+              error={errors.password?.message}
+            />
+          </div>
 
-            <Button type="submit" disabled={isSubmitting} className="w-full">
-              {isSubmitting ? "Creating account..." : "Create Account"}
-            </Button>
-          </form>
+          <Button type="submit" disabled={isSubmitting} className="w-full">
+            {isSubmitting ? "Creating account..." : "Create Account"}
+          </Button>
+        </form>
 
-          <p className="text-sm text-center text-muted mt-8">
-            Already have an account?{" "}
-            <Link
-              href="/login"
-              className="text-primary hover:underline font-medium"
-            >
-              Login
-            </Link>
-          </p>
-        </div>
+        <p className="text-sm text-center text-muted mt-8">
+          Already have an account?{" "}
+          <Link
+            href="/login"
+            className="text-primary hover:underline font-medium"
+          >
+            Login
+          </Link>
+        </p>
       </div>
-    </PublicRoute>
+    </div>
   );
 }

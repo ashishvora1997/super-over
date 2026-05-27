@@ -10,7 +10,6 @@ import { useAuthStore } from "@/app/store/auth.store";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { getErrorMessage } from "@/app/utils/error-handler";
-import { PublicRoute } from "@/app/components/auth/public-route";
 import { Input } from "@/app/components/ui/input";
 import { Button } from "@/app/components/ui/button";
 
@@ -50,63 +49,81 @@ export default function LoginPage() {
 
       window.location.href = "/dashboard";
     } catch (error: unknown) {
+      const axiosErr = error as {
+        response?: {
+          data?: {
+            needsVerification?: boolean;
+            userId?: number;
+            email?: string;
+          };
+        };
+      };
+      const errData = axiosErr?.response?.data;
+
+      if (errData?.needsVerification && errData?.userId && errData?.email) {
+        toast("Your email is not verified. Redirecting to verification...", {
+          icon: "📧",
+          duration: 3000,
+        });
+        router.push(
+          `/verify-email?userId=${errData.userId}&email=${encodeURIComponent(errData.email)}`,
+        );
+        return;
+      }
+
       toast.error(getErrorMessage(error));
     }
   };
 
   return (
-    <PublicRoute>
-      <div className="w-full max-w-md mx-auto bg-white border border-border shadow-sm p-8 rounded-2xl">
-        <h1 className="text-3xl font-semibold text-center mb-8">
-          Welcome Back
-        </h1>
+    <div className="w-full max-w-md mx-auto bg-white border border-border shadow-sm p-8 rounded-2xl">
+      <h1 className="text-3xl font-semibold text-center mb-8">Welcome Back</h1>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div>
-            <Input
-              {...register("email")}
-              label="Email"
-              required
-              type="email"
-              placeholder="Enter your email"
-              error={errors.email?.message}
-            />
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <div>
+          <Input
+            {...register("email")}
+            label="Email"
+            required
+            type="email"
+            placeholder="Enter your email"
+            error={errors.email?.message}
+          />
+        </div>
+
+        <div>
+          <div className="flex justify-end items-center mb-1.5">
+            <Link
+              href="/forgot-password"
+              className="text-sm text-primary hover:underline -mb-6 relative z-10"
+            >
+              Forgot?
+            </Link>
           </div>
 
-          <div>
-            <div className="flex justify-end items-center mb-1.5">
-              <Link
-                href="/forgot-password"
-                className="text-sm text-primary hover:underline -mb-6 relative z-10"
-              >
-                Forgot?
-              </Link>
-            </div>
+          <Input
+            type="password"
+            label="Password"
+            required
+            {...register("password")}
+            placeholder="Enter your password"
+            error={errors.password?.message}
+          />
+        </div>
+        <Button type="submit" disabled={isSubmitting} className="w-full">
+          {isSubmitting ? "Logging in..." : "Login"}
+        </Button>
+      </form>
 
-            <Input
-              type="password"
-              label="Password"
-              required
-              {...register("password")}
-              placeholder="Enter your password"
-              error={errors.password?.message}
-            />
-          </div>
-          <Button type="submit" disabled={isSubmitting} className="w-full">
-            {isSubmitting ? "Logging in..." : "Login"}
-          </Button>
-        </form>
-
-        <p className="text-sm text-center text-muted mt-8">
-          Don’t have an account?{" "}
-          <Link
-            href="/register"
-            className="text-primary hover:underline font-medium"
-          >
-            Register
-          </Link>
-        </p>
-      </div>
-    </PublicRoute>
+      <p className="text-sm text-center text-muted mt-8">
+        Don&apos;t have an account?{" "}
+        <Link
+          href="/register"
+          className="text-primary hover:underline font-medium"
+        >
+          Register
+        </Link>
+      </p>
+    </div>
   );
 }

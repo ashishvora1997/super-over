@@ -2,15 +2,26 @@ export interface User {
   id: number;
   name: string;
   email: string;
-  role: string;
+  is_profile_complete?: boolean;
+  is_email_verified?: boolean;
 }
 
 export interface AuthState {
   user: User | null;
-  token: string | null;
-  isInitialized: boolean;
+  accessToken: string | null;
 
-  setAuth: (data: { user: User; token: string }) => void;
-  loadUserFromStorage: () => void;
-  logout: () => void;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+
+  setAuth: (data: { user: User; accessToken: string | null }) => void;
+
+  setAccessToken: (token: string | null) => void;
+
+  setUser: (user: User | null) => void;
+
+  updateUser: (fields: Partial<User>) => void;
+
+  clearAuth: () => void;
+
+  setLoading: (loading: boolean) => void;
 }

@@ -33,3 +33,15 @@ export function formatBowlingStyle(code: string | undefined) {
   return BOWLING_STYLE_LABELS[code] || code;
 }
 
+export function formatDate(date: string | Date | undefined) {
+  if (!date) return "—";
+  try {
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).format(new Date(date));
+  } catch (e) {
+    return date.toString();
+  }
+}

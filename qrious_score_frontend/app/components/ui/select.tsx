@@ -21,7 +21,8 @@ interface Props {
 }
 
 interface DropdownPosition {
-  top: number;
+  top?: number;
+  bottom?: number;
   left: number;
   width: number;
   maxHeight: number;
@@ -149,9 +150,9 @@ export function Select({
               : Math.min(spaceBelow, maxDropdownHeight);
 
             setDropdownPosition({
-              top: openUpward
-                ? rect.top - availableHeight - gap
-                : rect.bottom + gap,
+              ...(openUpward
+                ? { bottom: window.innerHeight - rect.top + gap }
+                : { top: rect.bottom + gap }),
               left: rect.left,
               width: rect.width,
               maxHeight: availableHeight,
@@ -198,7 +199,12 @@ export function Select({
             ref={dropdownRef}
             className="fixed z-[2147483647] bg-white border border-border rounded-xl shadow-2xl shadow-black/20 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
             style={{
-              top: dropdownPosition.top,
+              ...(dropdownPosition.top !== undefined
+                ? { top: dropdownPosition.top }
+                : {}),
+              ...(dropdownPosition.bottom !== undefined
+                ? { bottom: dropdownPosition.bottom }
+                : {}),
               left: dropdownPosition.left,
               width: dropdownPosition.width,
               maxHeight: dropdownPosition.maxHeight,

@@ -66,6 +66,14 @@ function VerifyEmailContent() {
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace("/dashboard");
+    }
+  }, [isAuthenticated, router]);
+
   useEffect(() => {
     if (countdown <= 0) return;
     const id = setInterval(() => setCountdown((p) => p - 1), 1000);
@@ -133,10 +141,10 @@ function VerifyEmailContent() {
     try {
       const res = await verifyEmail({ userId: Number(userId), otp: code });
       setSuccess(true);
-      if (res.data?.token && res.data?.user) {
-        setAuth({ token: res.data.token, user: res.data.user });
+      if (res.data?.accessToken && res.data?.user) {
+        setAuth({ accessToken: res.data.accessToken, user: res.data.user });
       }
-      setTimeout(() => router.push("/dashboard"), 1500);
+      setTimeout(() => router.replace("/dashboard"), 1500);
     } catch (err: unknown) {
       setError(getErrorMessage(err));
       setOtp(["", "", "", "", "", ""]);
@@ -197,90 +205,90 @@ function VerifyEmailContent() {
     <div>
       <Link
         href="/register"
-          className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors mb-3"
+        className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors mb-3"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="m15 18-6-6 6-6" />
-          </svg>
-          Back to Register
-        </Link>
+          <path d="m15 18-6-6 6-6" />
+        </svg>
+        Back to Register
+      </Link>
 
-        <div className="bg-white rounded-2xl shadow-[0_2px_24px_rgba(0,0,0,0.06)] overflow-hidden">
-          <div className="px-8 pt-8 pb-0 text-center">
-            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <Mail className="w-6 h-6 text-primary" />
-            </div>
-
-            <h1 className="text-xl font-bold text-foreground mb-1">
-              Check your email
-            </h1>
-
-            <p className="text-sm text-muted">
-              We sent a 6-digit code to{" "}
-              <span className="font-medium text-foreground">{masked}</span>
-            </p>
+      <div className="bg-white rounded-2xl shadow-[0_2px_24px_rgba(0,0,0,0.06)] overflow-hidden">
+        <div className="px-8 pt-8 pb-0 text-center">
+          <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <Mail className="w-6 h-6 text-primary" />
           </div>
 
-          <div className="px-8 pt-6 pb-8">
-            {error && (
-              <div className="mb-4 p-3 bg-destructive/5 border border-destructive/15 rounded-xl flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-destructive leading-snug">{error}</p>
-              </div>
-            )}
+          <h1 className="text-xl font-bold text-foreground mb-1">
+            Check your email
+          </h1>
 
-            <p className="text-[10px] font-semibold text-muted uppercase tracking-[0.1em] mb-3">
-              Verification Code
-            </p>
+          <p className="text-sm text-muted">
+            We sent a 6-digit code to{" "}
+            <span className="font-medium text-foreground">{masked}</span>
+          </p>
+        </div>
 
-            <div className="flex justify-center gap-2 mb-4">
-              {otp.map((digit, i) => (
-                <OTPCell
-                  key={i}
-                  value={digit}
-                  onChange={(v) => handleChange(i, v)}
-                  onKeyDown={(e) => handleKeyDown(i, e)}
-                  onPaste={handlePaste}
-                  inputRef={(el) => {
-                    inputRefs.current[i] = el;
-                  }}
-                  disabled={loading || success}
-                  shake={shakeBoxes}
-                />
-              ))}
+        <div className="px-8 pt-6 pb-8">
+          {error && (
+            <div className="mb-4 p-3 bg-destructive/5 border border-destructive/15 rounded-xl flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-destructive leading-snug">{error}</p>
             </div>
+          )}
 
-            <p
-              className={`flex items-center justify-center gap-1.5 text-xs mb-6 transition-colors ${
-                timerExpired ? "text-destructive" : "text-muted"
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              {timerExpired ? (
-                "Code expired — request a new one"
-              ) : (
-                <>
-                  Code expires in{" "}
-                  <span className="font-semibold text-foreground">
-                    {fmt(countdown)}
-                  </span>
-                </>
-              )}
-            </p>
+          <p className="text-[10px] font-semibold text-muted uppercase tracking-[0.1em] mb-3">
+            Verification Code
+          </p>
 
-            <button
-              onClick={handleVerify}
-              disabled={loading || !allFilled || success}
-              className={`w-full h-11 rounded-xl text-sm font-semibold text-white transition-all duration-200
+          <div className="flex justify-center gap-2 mb-4">
+            {otp.map((digit, i) => (
+              <OTPCell
+                key={i}
+                value={digit}
+                onChange={(v) => handleChange(i, v)}
+                onKeyDown={(e) => handleKeyDown(i, e)}
+                onPaste={handlePaste}
+                inputRef={(el) => {
+                  inputRefs.current[i] = el;
+                }}
+                disabled={loading || success}
+                shake={shakeBoxes}
+              />
+            ))}
+          </div>
+
+          <p
+            className={`flex items-center justify-center gap-1.5 text-xs mb-6 transition-colors ${
+              timerExpired ? "text-destructive" : "text-muted"
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            {timerExpired ? (
+              "Code expired — request a new one"
+            ) : (
+              <>
+                Code expires in{" "}
+                <span className="font-semibold text-foreground">
+                  {fmt(countdown)}
+                </span>
+              </>
+            )}
+          </p>
+
+          <button
+            onClick={handleVerify}
+            disabled={loading || !allFilled || success}
+            className={`w-full h-11 rounded-xl text-sm font-semibold text-white transition-all duration-200
               flex items-center justify-center gap-2
               disabled:opacity-50 disabled:cursor-not-allowed
               ${
@@ -288,62 +296,62 @@ function VerifyEmailContent() {
                   ? "bg-accent hover:bg-accent"
                   : "bg-primary hover:bg-primary-dark active:scale-[0.98]"
               }`}
-            >
-              {success ? (
-                <>
-                  <Check className="w-5 h-5 animate-bounce-in" />
-                  Verified!
-                </>
-              ) : loading ? (
-                <>
-                  <svg
-                    className="w-4 h-4 animate-spin"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                    />
-                  </svg>
-                  Verifying...
-                </>
-              ) : (
-                "Verify"
-              )}
-            </button>
-          </div>
+          >
+            {success ? (
+              <>
+                <Check className="w-5 h-5 animate-bounce-in" />
+                Verified!
+              </>
+            ) : loading ? (
+              <>
+                <svg
+                  className="w-4 h-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+                Verifying...
+              </>
+            ) : (
+              "Verify"
+            )}
+          </button>
+        </div>
 
-          <div className="px-8 py-4 border-t border-border bg-background/50 text-center">
-            <p className="text-xs text-muted flex items-center justify-center gap-1.5 flex-wrap">
-              Didn&apos;t receive it?
-              <button
-                onClick={handleResend}
-                disabled={
-                  !timerExpired || resendLoading || remainingAttempts <= 0
-                }
-                className="text-primary font-medium hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed"
-              >
-                {resendLoading ? "Sending…" : "Resend"}
-              </button>
-              <span className="text-border">·</span>
-              <Link
-                href="/login"
-                className="text-primary font-medium hover:underline"
-              >
-                Sign in
-              </Link>
-            </p>
-          </div>
+        <div className="px-8 py-4 border-t border-border bg-background/50 text-center">
+          <p className="text-xs text-muted flex items-center justify-center gap-1.5 flex-wrap">
+            Didn&apos;t receive it?
+            <button
+              onClick={handleResend}
+              disabled={
+                !timerExpired || resendLoading || remainingAttempts <= 0
+              }
+              className="text-primary font-medium hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed"
+            >
+              {resendLoading ? "Sending…" : "Resend"}
+            </button>
+            <span className="text-border">·</span>
+            <Link
+              href="/login"
+              className="text-primary font-medium hover:underline"
+            >
+              Sign in
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   X,
   MapPin,
@@ -6,8 +7,14 @@ import {
   Calendar,
   Palette,
   Home,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { Team } from "@/app/types/teams.types";
+import { removePlayerFromTeam } from "@/app/services/teams.service";
+import { useTeamStore } from "@/app/store/teams.store";
+import toast from "react-hot-toast";
+import { getErrorMessage } from "@/app/utils/error-handler";
 
 interface TeamDetailModalProps {
   team: Team | null;
@@ -15,6 +22,36 @@ interface TeamDetailModalProps {
 }
 
 export function TeamDetailModal({ team, onClose }: TeamDetailModalProps) {
+  const [removingId, setRemovingId] = useState<number | null>(null);
+  const { fetchTeams, search, page } = useTeamStore();
+
+  const handleRemovePlayer = async (playerId: number) => {
+    if (!team) return;
+    try {
+      setRemovingId(playerId);
+      await removePlayerFromTeam(team.id, playerId);
+      toast.success("Player removed from team");
+
+      if (team.players) {
+        team.players = team.players.filter((p) => p.id !== playerId);
+      }
+      if (team.captain_id === playerId) {
+        team.captain_id = undefined;
+        team.captain = undefined;
+      }
+      if (team.wicket_keeper_id === playerId) {
+        team.wicket_keeper_id = undefined;
+        team.wicket_keeper = undefined;
+      }
+
+      await fetchTeams(search, page);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
   if (!team) return null;
 
   return (
@@ -91,6 +128,54 @@ export function TeamDetailModal({ team, onClose }: TeamDetailModalProps) {
               />
             )}
           </div>
+
+          {team.players && team.players.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                <Users size={16} className="text-primary" />
+                Squad Players
+              </h3>
+              <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                {team.players.map((player) => (
+                  <div
+                    key={player.id}
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 border border-border"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                        {player.name.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">
+                        {player.name}
+                      </span>
+                      {team.captain_id === player.id && (
+                        <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md font-bold">
+                          C
+                        </span>
+                      )}
+                      {team.wicket_keeper_id === player.id && (
+                        <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-md font-bold">
+                          WK
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => handleRemovePlayer(player.id)}
+                      disabled={removingId === player.id}
+                      className="p-1.5 text-muted hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                      title="Remove player"
+                    >
+                      {removingId === player.id ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={14} />
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="px-6 py-4 bg-gray-50 border-t border-border flex justify-end">

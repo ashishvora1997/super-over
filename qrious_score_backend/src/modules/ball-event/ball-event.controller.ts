@@ -6,23 +6,26 @@ import {
   Param,
   Post,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 
 import { BallEventService } from './ball-event.service';
 import { CreateBallEventDto } from './dtos/create-ball-event.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { User } from '../users/models/user.model';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard)
 @Controller('ball-events')
 export class BallEventController {
   constructor(private readonly ballEventService: BallEventService) {}
 
-  @Roles('admin', 'scorer')
   @Post()
-  async recordBall(@Body() dto: CreateBallEventDto) {
-    const result = await this.ballEventService.recordBall(dto);
+  async recordBall(
+    @Body() dto: CreateBallEventDto,
+    @Req() req: Request & { user: User },
+  ) {
+    const userId = req.user.id;
+    const result = await this.ballEventService.recordBall(dto, userId);
     const { ballEvent, innings } = result.data;
 
     this.ballEventService
@@ -62,10 +65,16 @@ export class BallEventController {
     return this.ballEventService.findOne(Number(id));
   }
 
-  @Roles('admin', 'scorer')
   @Delete('innings/:inningsId/undo')
-  async undoLast(@Param('inningsId') inningsId: number) {
-    const result = await this.ballEventService.undoLast(Number(inningsId));
+  async undoLast(
+    @Param('inningsId') inningsId: number,
+    @Req() req: Request & { user: User },
+  ) {
+    const userId = req.user.id;
+    const result = await this.ballEventService.undoLast(
+      Number(inningsId),
+      userId,
+    );
     const { innings } = result.data;
 
     this.ballEventService

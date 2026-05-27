@@ -1,112 +1,129 @@
 "use client";
 
-import { MatchRow } from "@/app/components/dashboard/match-row";
-import { StatCard } from "@/app/components/dashboard/stat-card";
-import { useAuthStore } from "@/app/store/auth.store";
-import { useMatchStore } from "@/app/store/matches.store";
-import { usePlayerStore } from "@/app/store/players.store";
-import { useTeamStore } from "@/app/store/teams.store";
-import { Users, UsersRound, Trophy, Radio } from "lucide-react";
 import { useEffect, useMemo } from "react";
-import { useLiveMatchUpdates } from "@/app/hooks/useLiveMatchUpdates";
+import { Flame, Target, TrendingUp, Swords, Calendar } from "lucide-react";
+import { useAuthStore } from "@/app/store/auth.store";
+import { useDashboardStore } from "@/app/store/dashboard.store";
+import { StatCard } from "@/app/components/dashboard/stat-card";
+import { MyMatchesCard } from "@/app/components/dashboard/my-matches-card";
+import { MyTeamsCard } from "@/app/components/dashboard/my-teams-card";
+import { RecentFormCard } from "@/app/components/dashboard/recent-form-card";
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function formatDate() {
+  return new Date().toLocaleDateString("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
 
 export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);
-  const players = usePlayerStore((state) => state.playersList);
-  const teams = useTeamStore((state) => state.teamsList);
-  const matchesList = useMatchStore((state) => state.matchesList);
-  const matches = useMatchStore((state) => state.matches);
-
-  const fetchPlayersList = usePlayerStore((state) => state.fetchPlayersList);
-  const fetchTeamsList = useTeamStore((state) => state.fetchTeamsList);
-  const fetchMatchesList = useMatchStore((state) => state.fetchMatchesList);
-  const fetchMatches = useMatchStore((state) => state.fetchMatches);
+  const { stats, loading, error, fetchStats } = useDashboardStore();
 
   useEffect(() => {
-    fetchPlayersList();
-    fetchTeamsList();
-    fetchMatchesList();
-    fetchMatches();
-  }, [fetchPlayersList, fetchTeamsList, fetchMatchesList, fetchMatches]);
+    fetchStats();
+  }, [fetchStats]);
 
-  const liveMatches = matches.filter((item) => item.status === "live").length;
-
-  const recentMatches = useMemo(() => {
-    const sorted = [...matches].sort((a, b) => {
-      if (a.status === "live" && b.status !== "live") return -1;
-      if (a.status !== "live" && b.status === "live") return 1;
-      return (
-        new Date(b.match_date).getTime() - new Date(a.match_date).getTime()
-      );
-    });
-    return sorted.slice(0, 5);
-  }, [matches]);
-
-  const liveMatchIds = useMemo(
-    () => matches.filter((m) => m.status === "live").map((m) => m.id),
-    [matches],
-  );
-  useLiveMatchUpdates(liveMatchIds);
+  const userTeamIds = useMemo(() => {
+    if (!stats?.myTeams) return [];
+    return stats.myTeams.map((t) => t.id);
+  }, [stats]);
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-4 max-w-5xl mx-auto">
       <div>
-        <h2 className="text-2xl font-bold text-foreground">
-          Welcome back {user?.name} 👋
-        </h2>
-        <p className="text-sm text-muted">Here's what's happening today</p>
+        <h1 className="text-2xl font-bold text-foreground">
+          {getGreeting()}, {user?.name?.split(" ")[0]} 👋
+        </h1>
+        <p className="text-sm text-muted mt-0.5">{formatDate()}</p>
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-4">
-        <StatCard
-          title="Players"
-          value={`${players.length}`}
-          icon={Users}
-          trend="+12 this month"
-          variant="blue"
-        />
-        <StatCard
-          title="Teams"
-          value={`${teams.length}`}
-          icon={UsersRound}
-          trend="+2 this month"
-          variant="violet"
-        />
-        <StatCard
-          title="Matches"
-          value={`${matchesList.length}`}
-          icon={Trophy}
-          trend="+5 this week"
-          variant="amber"
-        />
-        <StatCard
-          title="Live Now"
-          value={`${liveMatches}`}
-          icon={Radio}
-          trend="Active matches"
-          variant="green"
-          pulse
-        />
-      </div>
-
-      <div className="bg-white border border-border rounded-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h3 className="text-sm font-semibold text-foreground">
-            Recent Matches
-          </h3>
-          <span className="text-xs text-muted">{matches.length} total</span>
+      {error && (
+        <div className="bg-destructive/8 border border-destructive/20 rounded-xl px-4 py-3 text-sm text-destructive">
+          {error}
         </div>
+      )}
 
-        <div className="divide-y divide-border">
-          {recentMatches.length === 0 ? (
-            <div className="px-5 py-8 text-center text-sm text-muted">
-              No matches yet. Create your first match to get started.
-            </div>
-          ) : (
-            recentMatches.map((match) => (
-              <MatchRow key={match.id} match={match} />
-            ))
-          )}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted">
+            Career Statistics
+          </p>
+          <div
+            className="flex items-center gap-1.5 text-xs font-semibold text-foreground bg-white border border-border px-2.5 py-1.5 rounded-lg shadow-sm"
+            title="Filtering by season coming soon"
+          >
+            <Calendar size={13} className="text-muted" />
+            All-Time
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard
+            title="Runs"
+            icon={Flame}
+            value={String(stats?.runsThisSeason ?? 0)}
+            subtitle="Runs scored"
+            trendUp={true}
+            loading={loading}
+            accentColor="bg-amber-50"
+            iconColor="text-amber-500"
+          />
+          <StatCard
+            title="Average"
+            icon={TrendingUp}
+            value={String(stats?.battingAverage ?? 0)}
+            subtitle="Batting average"
+            trendUp={true}
+            loading={loading}
+            accentColor="bg-primary/10"
+            iconColor="text-primary"
+          />
+          <StatCard
+            title="Wickets"
+            icon={Target}
+            value={String(stats?.wicketsTaken ?? 0)}
+            subtitle="Wickets taken"
+            trendUp={null}
+            loading={loading}
+            accentColor="bg-violet-50"
+            iconColor="text-violet-500"
+          />
+          <StatCard
+            title="Strike Rate"
+            icon={Swords}
+            value={String(stats?.strikeRate ?? 0)}
+            subtitle="Strike rate"
+            trendUp={true}
+            loading={loading}
+            accentColor="bg-accent/10"
+            iconColor="text-accent"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <MyMatchesCard
+          matches={stats?.myMatches ?? []}
+          userTeamIds={userTeamIds}
+          loading={loading}
+        />
+
+        <div className="flex flex-col gap-4">
+          <MyTeamsCard teams={stats?.myTeams ?? []} loading={loading} />
+          <RecentFormCard
+            form={stats?.recentForm ?? []}
+            highlights={stats?.highlights ?? null}
+            loading={loading}
+          />
         </div>
       </div>
     </div>

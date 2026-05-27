@@ -6,14 +6,15 @@ import {
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
+import { InjectModel } from '@nestjs/sequelize';
+
 import { JwtPayload } from '../../interfaces/jwt-payload.interface';
 import { User } from 'src/modules/users/models/user.model';
-import { InjectModel } from '@nestjs/sequelize';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-    configService: ConfigService,
+    private configService: ConfigService,
     @InjectModel(User) private userModel: typeof User,
   ) {
     const jwtSecret = configService.get<string>('JWT_SECRET');
@@ -29,8 +30,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: JwtPayload): Promise<JwtPayload> {
-    const userId = payload.sub || payload.id;
+  async validate(payload: JwtPayload) {
+    const userId = payload.sub;
 
     if (!userId) {
       throw new UnauthorizedException('Invalid token payload');
@@ -49,8 +50,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     return {
-      ...payload,
-      id: userId,
+      id: payload.sub,
+      sub: payload.sub,
+      email: payload.email,
     };
   }
 }

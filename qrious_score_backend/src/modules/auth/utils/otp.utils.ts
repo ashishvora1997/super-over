@@ -20,10 +20,6 @@ export function getOTPExpiry(): Date {
   return new Date(Date.now() + 10 * 60 * 1000);
 }
 
-export function isOTPExpired(expiryDate: Date): boolean {
-  return new Date() > new Date(expiryDate);
-}
-
 export function getResendResetTime(): Date {
   return new Date(Date.now() + 30 * 60 * 1000);
 }

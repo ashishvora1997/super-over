@@ -1,9 +1,11 @@
+import { InjectModel } from '@nestjs/sequelize';
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/sequelize';
+import { Op } from 'sequelize';
 
 import { Innings } from './models/innings.model';
 import { Toss } from '../toss/models/toss.model';
@@ -11,6 +13,9 @@ import { Match } from '../match/models/match.model';
 import { Team } from '../teams/models/teams.model';
 import { Player } from '../players/models/players.model';
 import { TeamPlayer } from '../teams/models/team-player.model';
+import { MatchScorer } from '../match/models/match-scorer.model';
+import { TournamentScorer } from '../tournament/models/tournament-scorer.model';
+
 import { StartInningsDto } from './dtos/start-innings.dto';
 import { UpdateInningsPlayersDto } from './dtos/update-innings-players.dto';
 import { SuccessResponse } from 'src/common/types/response.type';
@@ -32,8 +37,80 @@ export class InningsService {
     @InjectModel(TeamPlayer)
     private teamPlayerModel: typeof TeamPlayer,
 
+    @InjectModel(MatchScorer)
+    private matchScorerModel: typeof MatchScorer,
+
+    @InjectModel(TournamentScorer)
+    private tournamentScorerModel: typeof TournamentScorer,
+
     private readonly scoringGateway: ScoringGateway,
   ) {}
+
+  private async validateScorerAuthority(
+    match: Match,
+    userId: number,
+  ): Promise<void> {
+    if (match.active_scorer_id === userId) return;
+
+    if (match.active_scorer_id !== null) {
+      throw new ForbiddenException(
+        'Only the current active scorer can update score events',
+      );
+    }
+
+    let isAuthorized = false;
+
+    if (match.created_by === userId) isAuthorized = true;
+
+    if (!isAuthorized && match.tournament_id) {
+      const ts = await this.tournamentScorerModel.findOne({
+        where: { tournament_id: match.tournament_id, user_id: userId },
+      });
+      if (ts) isAuthorized = true;
+    }
+
+    if (!isAuthorized && !match.tournament_id) {
+      const ms = await this.matchScorerModel.findOne({
+        where: { match_id: match.id, user_id: userId },
+      });
+      if (ms) isAuthorized = true;
+    }
+
+    if (!isAuthorized) {
+      throw new ForbiddenException(
+        'You are not authorized to score this match',
+      );
+    }
+
+    await this.checkConcurrentSession(userId, match.id);
+
+    await match.update({ active_scorer_id: userId });
+  }
+
+  private async checkConcurrentSession(
+    userId: number,
+    currentMatchId: number,
+  ): Promise<void> {
+    const conflicting = await this.matchModel.findOne({
+      where: {
+        active_scorer_id: userId,
+        status: 'live',
+        id: { [Op.ne]: currentMatchId },
+      },
+      include: [
+        { model: Team, as: 'teamA', attributes: ['id', 'name'] },
+        { model: Team, as: 'teamB', attributes: ['id', 'name'] },
+      ],
+    });
+
+    if (conflicting) {
+      const a = conflicting.teamA?.name || 'Team A';
+      const b = conflicting.teamB?.name || 'Team B';
+      throw new BadRequestException(
+        `You are currently the active scorer for a live match (${a} vs ${b}). Please transfer scoring access or complete that match before scoring another one.`,
+      );
+    }
+  }
 
   private async validateBattingPlayers(
     battingTeamId: number,
@@ -95,12 +172,20 @@ export class InningsService {
   async start(
     inningsId: number,
     dto: StartInningsDto,
+    userId: number,
   ): Promise<SuccessResponse<Innings>> {
     const innings = await this.inningsModel.findByPk(inningsId);
 
     if (!innings) {
       throw new NotFoundException('Innings not found');
     }
+
+    const match = await this.matchModel.findByPk(innings.match_id);
+    if (!match) {
+      throw new NotFoundException('Match not found');
+    }
+
+    await this.validateScorerAuthority(match, userId);
 
     if (innings.status === 'in_progress') {
       throw new BadRequestException('Innings has already started');
@@ -175,12 +260,20 @@ export class InningsService {
   async updatePlayers(
     inningsId: number,
     dto: UpdateInningsPlayersDto,
+    userId: number,
   ): Promise<SuccessResponse<Innings>> {
     const innings = await this.inningsModel.findByPk(inningsId);
 
     if (!innings) {
       throw new NotFoundException('Innings not found');
     }
+
+    const match = await this.matchModel.findByPk(innings.match_id);
+    if (!match) {
+      throw new NotFoundException('Match not found');
+    }
+
+    await this.validateScorerAuthority(match, userId);
 
     if (innings.status !== 'in_progress') {
       throw new BadRequestException(

@@ -1,9 +1,15 @@
 export type MatchStatus = "scheduled" | "live" | "completed";
-export type MatchResult = "win" | "tie" | "no_result" | "super_over" | "draw" | null;
+export type MatchResult =
+  | "win"
+  | "tie"
+  | "no_result"
+  | "super_over"
+  | "draw"
+  | null;
 
 export interface Match {
   id: number;
-  tournament_id: number;
+  tournament_id: number | null;
   team_a_id: number;
   team_b_id: number;
   match_date: string;
@@ -15,6 +21,9 @@ export interface Match {
   super_over_number: number;
   super_over_chasing_team_id?: number;
   overs_per_side?: number;
+  overs_per_bowler?: number;
+  created_by?: number;
+  active_scorer_id?: number;
 
   tournament?: { id: number; name: string };
   teamA?: {
@@ -44,13 +53,12 @@ export interface Match {
 }
 
 export interface CreateMatchPayload {
-  tournament_id: number;
+  tournament_id?: number | null;
   team_a_id: number;
   team_b_id: number;
   match_date: string;
-  venue: string;
+  venue?: string;
   overs_per_side?: number;
-  winner_team_id?: number | null;
 }
 
 export interface UpdateMatchPayload extends Partial<CreateMatchPayload> {
@@ -72,3 +80,20 @@ export interface MatchState {
   deleteMatch: (id: number) => Promise<void>;
   setTournamentFilter: (id: number | undefined) => void;
 }
+
+export interface MatchRules {
+  id: number;
+  tournament_id: number | null;
+  match_id: number;
+  wide_runs: number;
+  no_ball_runs: number;
+  count_wide_as_legal_delivery: boolean;
+  count_no_ball_as_legal_delivery: boolean;
+  ignore_wide_rule: boolean;
+  ignore_no_ball_rule: boolean;
+  is_customized: boolean;
+}
+
+export type UpdateMatchRulesPayload = Partial<
+  Omit<MatchRules, "id" | "tournament_id" | "match_id" | "is_customized">
+>;

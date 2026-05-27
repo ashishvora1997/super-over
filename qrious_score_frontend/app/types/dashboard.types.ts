@@ -6,7 +6,6 @@ export interface StatCardProps {
   title: string;
   value: string;
   icon: LucideIcon;
-  trend: string;
   variant: ColorVariant;
   pulse?: boolean;
 }

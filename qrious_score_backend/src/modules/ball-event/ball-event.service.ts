@@ -1,9 +1,11 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
+import { Op, Transaction } from 'sequelize';
 
 import { BallEvent } from './models/ball-event.model';
 import { Innings } from '../innings/models/innings.model';
@@ -11,11 +13,15 @@ import { Match } from '../match/models/match.model';
 import { Player } from '../players/models/players.model';
 import { TeamPlayer } from '../teams/models/team-player.model';
 import { Team } from '../teams/models/teams.model';
+import { Rules } from '../tournament/models/rules.model';
+import { MatchScorer } from '../match/models/match-scorer.model';
+import { TournamentScorer } from '../tournament/models/tournament-scorer.model';
+
 import { CreateBallEventDto } from './dtos/create-ball-event.dto';
 import { SuccessResponse } from 'src/common/types/response.type';
 import { successResponse } from 'src/common/utils/response.util';
+
 import { Sequelize } from 'sequelize-typescript';
-import { Op } from 'sequelize';
 import { PointsTableService } from '../points-table/points-table.service';
 import { ScoringGateway } from '../scoring-gateway/scoring.gateway';
 
@@ -34,6 +40,15 @@ export class BallEventService {
     @InjectModel(TeamPlayer)
     private teamPlayerModel: typeof TeamPlayer,
 
+    @InjectModel(Rules)
+    private rulesModel: typeof Rules,
+
+    @InjectModel(MatchScorer)
+    private matchScorerModel: typeof MatchScorer,
+
+    @InjectModel(TournamentScorer)
+    private tournamentScorerModel: typeof TournamentScorer,
+
     private sequelize: Sequelize,
 
     private readonly pointsTableService: PointsTableService,
@@ -51,8 +66,34 @@ export class BallEventService {
     ];
   }
 
+  private async checkConcurrentSession(
+    userId: number,
+    currentMatchId: number,
+  ): Promise<void> {
+    const conflicting = await this.matchModel.findOne({
+      where: {
+        active_scorer_id: userId,
+        status: 'live',
+        id: { [Op.ne]: currentMatchId },
+      },
+      include: [
+        { model: Team, as: 'teamA', attributes: ['id', 'name'] },
+        { model: Team, as: 'teamB', attributes: ['id', 'name'] },
+      ],
+    });
+
+    if (conflicting) {
+      const a = conflicting.teamA?.name || 'Team A';
+      const b = conflicting.teamB?.name || 'Team B';
+      throw new BadRequestException(
+        `You are currently the active scorer for a live match (${a} vs ${b}). Please transfer scoring access or complete that match before scoring another one.`,
+      );
+    }
+  }
+
   async recordBall(
     dto: CreateBallEventDto,
+    userId: number,
   ): Promise<SuccessResponse<{ ballEvent: BallEvent; innings: Innings }>> {
     const {
       innings_id,
@@ -83,6 +124,76 @@ export class BallEventService {
     }
     if (match.status !== 'live') {
       throw new BadRequestException('Match is not live');
+    }
+
+    if (match.active_scorer_id !== userId) {
+      if (match.active_scorer_id === null) {
+        let isAuthorized = false;
+        if (match.tournament_id) {
+          const tournamentScorer = await this.tournamentScorerModel.findOne({
+            where: { tournament_id: match.tournament_id, user_id: userId },
+          });
+          if (tournamentScorer) isAuthorized = true;
+        } else {
+          const matchScorer = await this.matchScorerModel.findOne({
+            where: { match_id: match.id, user_id: userId },
+          });
+          if (matchScorer) isAuthorized = true;
+        }
+
+        if (match.created_by === userId) {
+          isAuthorized = true;
+        }
+
+        if (!isAuthorized) {
+          throw new ForbiddenException(
+            'Only the current active scorer can update score events',
+          );
+        }
+
+        await match.update({ active_scorer_id: userId });
+      } else {
+        throw new ForbiddenException(
+          'Only the current active scorer can update score events',
+        );
+      }
+    }
+
+    await this.checkConcurrentSession(userId, match.id);
+
+    const matchRules = await this.rulesModel.findOne({
+      where: { match_id: innings.match_id },
+    });
+    const ignoreWideRule = matchRules?.ignore_wide_rule ?? false;
+    const ignoreNoBallRule = matchRules?.ignore_no_ball_rule ?? false;
+
+    let effectiveExtraType = extra_type;
+    let effectiveRunsExtra = runs_extra;
+
+    if (ignoreWideRule && effectiveExtraType === 'wide') {
+      effectiveExtraType = undefined;
+      effectiveRunsExtra = 0;
+    }
+    if (ignoreNoBallRule && effectiveExtraType === 'no_ball') {
+      effectiveExtraType = undefined;
+      effectiveRunsExtra = 0;
+    }
+
+    const ruleWideRuns = matchRules?.wide_runs ?? 1;
+    const ruleNoBallRuns = matchRules?.no_ball_runs ?? 1;
+    const countWideAsLegal = ignoreWideRule
+      ? false
+      : (matchRules?.count_wide_as_legal_delivery ?? false);
+    const countNoBallAsLegal = ignoreNoBallRule
+      ? false
+      : (matchRules?.count_no_ball_as_legal_delivery ?? false);
+
+    let computedRunsExtra = effectiveRunsExtra;
+    if (effectiveExtraType === 'wide') {
+      const additionalRuns = Math.max(0, effectiveRunsExtra - 1);
+      computedRunsExtra = ruleWideRuns + additionalRuns;
+    } else if (effectiveExtraType === 'no_ball') {
+      computedRunsExtra = ruleNoBallRuns;
     }
 
     await this.validatePlayers(
@@ -121,13 +232,21 @@ export class BallEventService {
       }
     }
 
-    const isLegal =
-      !extra_type || extra_type === 'bye' || extra_type === 'leg_bye';
+    let isLegal =
+      !effectiveExtraType ||
+      effectiveExtraType === 'bye' ||
+      effectiveExtraType === 'leg_bye';
+    if (effectiveExtraType === 'wide' && countWideAsLegal) {
+      isLegal = true;
+    }
+    if (effectiveExtraType === 'no_ball' && countNoBallAsLegal) {
+      isLegal = true;
+    }
 
     const overNumber = innings.overs;
     const ballNumber = isLegal ? innings.balls + 1 : innings.balls;
 
-    const totalDeliveryRuns = runs_bat + runs_extra;
+    const totalDeliveryRuns = runs_bat + computedRunsExtra;
 
     const result = await this.sequelize.transaction(async (transaction) => {
       const ballMetadata: Record<string, unknown> = {
@@ -141,6 +260,11 @@ export class BallEventService {
           ballMetadata.batsmen_crossed = dto.batsmen_crossed;
         }
       }
+      if (effectiveExtraType === 'wide') {
+        ballMetadata.penalty_runs = ruleWideRuns;
+      } else if (effectiveExtraType === 'no_ball') {
+        ballMetadata.penalty_runs = ruleNoBallRuns;
+      }
 
       const ballEvent = await this.ballEventModel.create(
         {
@@ -151,8 +275,8 @@ export class BallEventService {
           non_striker_id,
           bowler_id,
           runs_bat,
-          runs_extra,
-          extra_type: extra_type || null,
+          runs_extra: computedRunsExtra,
+          extra_type: effectiveExtraType || null,
           is_wicket,
           wicket_type: wicket_type || null,
           dismissed_player_id: dismissed_player_id || null,
@@ -207,7 +331,7 @@ export class BallEventService {
       }
 
       if (extra_type === 'wide') {
-        const runsRun = runs_extra - 1;
+        const runsRun = computedRunsExtra - ruleWideRuns;
         if (runsRun > 0 && runsRun % 2 !== 0) {
           [newStrikerId, newNonStrikerId] = [newNonStrikerId, newStrikerId];
         }
@@ -237,7 +361,16 @@ export class BallEventService {
         updateData.bowler_id = bowler_id;
       }
 
-      const allOut = newWickets >= innings.max_wickets;
+      const battingTeamPlayersCount = await this.teamPlayerModel.count({
+        where: { team_id: innings.batting_team_id },
+        transaction,
+      });
+      const effectiveMaxWickets = Math.min(
+        innings.max_wickets,
+        Math.max(0, battingTeamPlayersCount - 1),
+      );
+
+      const allOut = newWickets >= effectiveMaxWickets;
       const maxOvers = innings.is_super_over ? 1 : match.overs_per_side;
       const oversFinished = newOvers >= maxOvers && newBalls === 0;
 
@@ -253,7 +386,7 @@ export class BallEventService {
         });
         if (firstInnings) {
           firstInningsTotal = firstInnings.total_runs;
-          if (updateData.total_runs > firstInnings.total_runs) {
+          if (updateData.total_runs! > firstInnings.total_runs) {
             targetChased = true;
           }
         }
@@ -269,7 +402,7 @@ export class BallEventService {
         });
         if (firstSuperOverInnings) {
           firstInningsTotal = firstSuperOverInnings.total_runs;
-          if (updateData.total_runs > firstInningsTotal) {
+          if (updateData.total_runs! > firstInningsTotal) {
             targetChased = true;
           }
         }
@@ -307,10 +440,10 @@ export class BallEventService {
           if (targetChased) {
             winnerTeamId = innings.batting_team_id;
             matchResult = 'win';
-          } else if (updateData.total_runs < firstInningsTotal) {
+          } else if (updateData.total_runs! < firstInningsTotal) {
             winnerTeamId = innings.bowling_team_id;
             matchResult = 'win';
-          } else if (updateData.total_runs === firstInningsTotal) {
+          } else if (updateData.total_runs! === firstInningsTotal) {
             winnerTeamId = null;
             matchResult = 'super_over';
           }
@@ -362,7 +495,7 @@ export class BallEventService {
             },
           );
 
-          if (matchResult === 'win') {
+          if (matchResult === 'win' && match.tournament_id) {
             await this.pointsTableService.updateFromMatch(
               match.id,
               transaction,
@@ -462,10 +595,49 @@ export class BallEventService {
 
   async undoLast(
     inningsId: number,
+    userId: number,
   ): Promise<SuccessResponse<{ innings: Innings }>> {
     const innings = await this.inningsModel.findByPk(inningsId);
     if (!innings) {
       throw new NotFoundException('Innings not found');
+    }
+
+    const match = await this.matchModel.findByPk(innings.match_id);
+    if (match && match.active_scorer_id !== userId) {
+      if (match.active_scorer_id === null) {
+        let isAuthorized = false;
+        if (match.tournament_id) {
+          const tournamentScorer = await this.tournamentScorerModel.findOne({
+            where: { tournament_id: match.tournament_id, user_id: userId },
+          });
+          if (tournamentScorer) isAuthorized = true;
+        } else {
+          const matchScorer = await this.matchScorerModel.findOne({
+            where: { match_id: match.id, user_id: userId },
+          });
+          if (matchScorer) isAuthorized = true;
+        }
+
+        if (match.created_by === userId) {
+          isAuthorized = true;
+        }
+
+        if (!isAuthorized) {
+          throw new ForbiddenException(
+            'Only the current active scorer can update score events',
+          );
+        }
+
+        await match.update({ active_scorer_id: userId });
+      } else {
+        throw new ForbiddenException(
+          'Only the current active scorer can update score events',
+        );
+      }
+    }
+
+    if (match) {
+      await this.checkConcurrentSession(userId, match.id);
     }
 
     const lastEvent = await this.ballEventModel.findOne({
@@ -505,67 +677,42 @@ export class BallEventService {
       updateData.non_striker_id = lastEvent.non_striker_id;
       updateData.bowler_id = lastEvent.bowler_id;
 
-      if (innings.status === 'completed') {
+      const wasCompleted = innings.status === 'completed';
+
+      if (wasCompleted) {
         updateData.status = 'in_progress';
       }
 
       await innings.update(updateData, { transaction });
       await lastEvent.destroy({ transaction });
 
-      if (innings.status === 'completed') {
-        if (innings.innings_number === 1) {
-          const innings2 = await this.inningsModel.findOne({
-            where: { match_id: innings.match_id, innings_number: 2 },
-            transaction,
-          });
-          if (innings2) {
-            if (innings2.status !== 'not_started') {
-              throw new BadRequestException(
-                'Cannot undo: Innings 2 has already started.',
-              );
-            }
-            await innings2.destroy({ transaction });
+      if (wasCompleted) {
+        const subsequentInnings = await this.inningsModel.findAll({
+          where: {
+            match_id: innings.match_id,
+            innings_number: { [Op.gt]: innings.innings_number },
+          },
+          transaction,
+        });
+
+        for (const subInnings of subsequentInnings) {
+          if (subInnings.status !== 'not_started') {
+            throw new BadRequestException(
+              'Cannot undo: A subsequent innings has already started.',
+            );
           }
-        } else if (innings.innings_number === 2) {
-          await this.pointsTableService.reverseFromMatch(
-            innings.match_id,
-            transaction,
-          );
+        }
 
-          await this.matchModel.update(
-            {
-              status: 'live',
-              winner_team_id: null,
-              result: null,
-              is_super_over: false,
-              super_over_number: 0,
-            },
-            {
-              where: { id: innings.match_id },
-              transaction,
-            },
-          );
-        } else if (innings.is_super_over) {
-          const subsequentInnings = await this.inningsModel.findAll({
-            where: {
-              match_id: innings.match_id,
-              innings_number: { [Op.gt]: innings.innings_number },
-            },
+        for (const subInnings of subsequentInnings) {
+          await this.ballEventModel.destroy({
+            where: { innings_id: subInnings.id },
             transaction,
           });
+          await subInnings.destroy({ transaction });
+        }
 
-          for (const subInnings of subsequentInnings) {
-            await this.ballEventModel.destroy({
-              where: { innings_id: subInnings.id },
-              transaction,
-            });
-            await subInnings.destroy({ transaction });
-          }
-
-          const match = await this.matchModel.findByPk(innings.match_id, {
-            transaction,
-          });
-          if (match && match.result === 'win') {
+        if (innings.innings_number >= 2) {
+          if (match && match.tournament_id) {
             await this.pointsTableService.reverseFromMatch(
               innings.match_id,
               transaction,
@@ -576,9 +723,11 @@ export class BallEventService {
             {
               status: 'live',
               winner_team_id: null,
-              result: innings.super_over_number === 1 ? 'super_over' : null,
-              is_super_over: true,
-              super_over_number: innings.super_over_number,
+              result: innings.is_super_over ? 'super_over' : null,
+              is_super_over: innings.is_super_over,
+              super_over_number: innings.is_super_over
+                ? innings.super_over_number
+                : 0,
             },
             {
               where: { id: innings.match_id },
@@ -638,7 +787,13 @@ export class BallEventService {
       };
     }>
   > {
-    const innings = await this.inningsModel.findByPk(inningsId);
+    const innings = await this.inningsModel.findByPk(inningsId, {
+      include: [
+        { model: Player, as: 'striker', attributes: ['id', 'name'] },
+        { model: Player, as: 'nonStriker', attributes: ['id', 'name'] },
+        { model: Player, as: 'bowler', attributes: ['id', 'name'] },
+      ],
+    });
     if (!innings) {
       throw new NotFoundException('Innings not found');
     }
@@ -680,6 +835,49 @@ export class BallEventService {
 
     const extras = { wides: 0, no_balls: 0, byes: 0, leg_byes: 0, total: 0 };
 
+    if (innings.striker_id) {
+      battersMap.set(innings.striker_id, {
+        player_id: innings.striker_id,
+        player_name: innings.striker?.name || `Player ${innings.striker_id}`,
+        runs: 0,
+        balls_faced: 0,
+        fours: 0,
+        sixes: 0,
+        is_out: false,
+        wicket_type: null,
+        bowler_name: null,
+        fielder_name: null,
+      });
+    }
+
+    if (innings.non_striker_id) {
+      battersMap.set(innings.non_striker_id, {
+        player_id: innings.non_striker_id,
+        player_name:
+          innings.nonStriker?.name || `Player ${innings.non_striker_id}`,
+        runs: 0,
+        balls_faced: 0,
+        fours: 0,
+        sixes: 0,
+        is_out: false,
+        wicket_type: null,
+        bowler_name: null,
+        fielder_name: null,
+      });
+    }
+
+    if (innings.bowler_id) {
+      bowlersMap.set(innings.bowler_id, {
+        player_id: innings.bowler_id,
+        player_name: innings.bowler?.name || `Player ${innings.bowler_id}`,
+        legal_balls: 0,
+        runs_conceded: 0,
+        wickets: 0,
+        extras: 0,
+        overs_balls: new Map(),
+      });
+    }
+
     for (const event of events) {
       const strikerId = event.striker_id;
       if (!battersMap.has(strikerId)) {
@@ -713,7 +911,19 @@ export class BallEventService {
         });
       }
 
-      const batter = battersMap.get(strikerId)!;
+      const striker = battersMap.get(strikerId)!;
+      striker.is_out = false;
+      striker.wicket_type = null;
+      striker.bowler_name = null;
+      striker.fielder_name = null;
+
+      const nonStriker = battersMap.get(nonStrikerId)!;
+      nonStriker.is_out = false;
+      nonStriker.wicket_type = null;
+      nonStriker.bowler_name = null;
+      nonStriker.fielder_name = null;
+
+      const batter = striker;
 
       if (event.extra_type !== 'wide') {
         batter.balls_faced += 1;
@@ -890,7 +1100,7 @@ export class BallEventService {
     match: Match,
     currentInnings: Innings,
     updateData: Partial<Innings>,
-    transaction: any,
+    transaction: Transaction,
   ): Promise<void> {
     const superOverNumber = currentInnings.super_over_number;
 
@@ -949,7 +1159,12 @@ export class BallEventService {
               transaction,
             },
           );
-          await this.pointsTableService.updateFromMatch(match.id, transaction);
+          if (match.tournament_id) {
+            await this.pointsTableService.updateFromMatch(
+              match.id,
+              transaction,
+            );
+          }
         } else if (otherTeamRuns < chasingTeamRuns) {
           await this.matchModel.update(
             {
@@ -962,7 +1177,12 @@ export class BallEventService {
               transaction,
             },
           );
-          await this.pointsTableService.updateFromMatch(match.id, transaction);
+          if (match.tournament_id) {
+            await this.pointsTableService.updateFromMatch(
+              match.id,
+              transaction,
+            );
+          }
         } else {
           if (superOverNumber >= 2) {
             await this.matchModel.update(
@@ -976,10 +1196,12 @@ export class BallEventService {
                 transaction,
               },
             );
-            await this.pointsTableService.updateFromMatch(
-              match.id,
-              transaction,
-            );
+            if (match.tournament_id) {
+              await this.pointsTableService.updateFromMatch(
+                match.id,
+                transaction,
+              );
+            }
           } else {
             const newSuperOverNumber = superOverNumber + 1;
 

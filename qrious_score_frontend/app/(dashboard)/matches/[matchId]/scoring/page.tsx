@@ -12,14 +12,23 @@ import {
   CircleDot,
   X,
   Flame,
+  RefreshCw,
+  User,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { useBallEventStore } from "@/app/store/ball-event.store";
 import { useInningsStore } from "@/app/store/innings.store";
-import { getMatchById } from "@/app/services/matches.service";
+import {
+  getMatchById,
+  getMatchRules,
+  getActiveScoringSession,
+  getMatchScorers,
+  takeoverScoring,
+  transferScoring,
+} from "@/app/services/matches.service";
 import { useAuthStore } from "@/app/store/auth.store";
-import { Match } from "@/app/types/match.types";
+import { Match, MatchRules } from "@/app/types/match.types";
 import { Innings } from "@/app/types/innings.types";
 import {
   CreateBallEventPayload,
@@ -34,6 +43,7 @@ import {
   currentRunRate,
   getBallLabel,
   getBallColor,
+  isBowlerWicket,
 } from "@/app/utils/cricket.utils";
 import { ViewerScoreboardContainer } from "@/app/components/matches/scorecard-view";
 import { useMatchSocket } from "@/app/hooks/useMatchSocket";
@@ -91,6 +101,7 @@ function WicketPanel({
     { value: "run_out", label: "Run Out" },
     { value: "stumped", label: "Stumped" },
     { value: "hit_wicket", label: "Hit Wicket" },
+    { value: "retired_hurt", label: "Retired Hurt" },
   ];
 
   const allowedWicketTypes = isFreeHit
@@ -112,7 +123,8 @@ function WicketPanel({
 
   const isStumped = wicketType === "stumped";
 
-  const needsDismissedSelection = wicketType === "run_out";
+  const needsDismissedSelection =
+    wicketType === "run_out" || wicketType === "retired_hurt";
 
   const batsmen = [
     innings.striker_id
@@ -322,9 +334,6 @@ function WicketPanel({
                 ?.name || "Wicket Keeper"}
             </span>
           </div>
-          <p className="text-[10px] text-blue-500/70 mt-1">
-            Auto-assigned — only the wicket keeper can stump
-          </p>
         </div>
       )}
 
@@ -359,11 +368,15 @@ function WicketPanel({
 function ExtrasPanel({
   open,
   extraType,
+  wideRuns = 1,
+  noBallRuns = 1,
   onClose,
   onSubmit,
 }: {
   open: boolean;
   extraType: ExtraType | null;
+  wideRuns?: number;
+  noBallRuns?: number;
   onClose: () => void;
   onSubmit: (runsBat: number, runsExtra: number) => void;
 }) {
@@ -403,8 +416,8 @@ function ExtrasPanel({
             </button>
           </div>
           <p className="text-xs text-muted mb-3">
-            1 penalty run added automatically. How many runs did the batsman
-            score off the bat?
+            {noBallRuns} penalty run{noBallRuns !== 1 ? "s" : ""} added
+            automatically. How many runs did the batsman score off the bat?
           </p>
           <div className="grid grid-cols-4 gap-2">
             {[0, 1, 2, 3, 4, 6].map((r) => (
@@ -454,8 +467,8 @@ function ExtrasPanel({
             </button>
           </div>
           <p className="text-xs text-muted mb-4">
-            1 run awarded automatically. Tap to add additional runs (overthrows,
-            etc.)
+            {wideRuns} run{wideRuns !== 1 ? "s" : ""} awarded automatically. Tap
+            to add additional runs (overthrows, etc.)
           </p>
           <div className="grid grid-cols-5 gap-2">
             {additionalRunOptions.map((additional) => {
@@ -472,7 +485,7 @@ function ExtrasPanel({
                 >
                   <span className="block text-sm">+{additional}</span>
                   <span className="block text-[10px] opacity-60">
-                    ({totalExtra} total)
+                    ({wideRuns + additional} total)
                   </span>
                 </button>
               );
@@ -537,12 +550,15 @@ function ScoreboardHeader({
   isCompleted: boolean;
   allInnings: Innings[];
 }) {
-  const oversPerSide = matchDetail.overs_per_side;
+  const isSuperOver = inn.is_super_over || inn.innings_number > 2;
+  const oversPerSide = isSuperOver ? 1 : matchDetail.overs_per_side;
 
-  const firstInnings = allInnings.find((i) => i.innings_number === 1);
-  const isSecondInnings = inn.innings_number === 2;
+  const previousInnings = allInnings.find(
+    (i) => i.innings_number === inn.innings_number - 1,
+  );
+  const isChasing = inn.innings_number % 2 === 0;
   const target =
-    isSecondInnings && firstInnings ? firstInnings.total_runs + 1 : null;
+    isChasing && previousInnings ? previousInnings.total_runs + 1 : null;
   const runsNeeded = target ? target - inn.total_runs : null;
 
   const totalBalls = oversPerSide ? oversPerSide * 6 : null;
@@ -564,7 +580,7 @@ function ScoreboardHeader({
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.15),transparent_50%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_80%,rgba(34,197,94,0.1),transparent_50%)]" />
 
-      {isSecondInnings && target !== null && !isCompleted && (
+      {isChasing && target !== null && !isCompleted && (
         <div className="relative bg-amber-500/20 border-b border-amber-500/25 px-5 py-2 flex items-center justify-between">
           <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider">
             🎯 Target: {target}
@@ -576,6 +592,26 @@ function ScoreboardHeader({
           )}
         </div>
       )}
+
+      {matchDetail.result &&
+        (matchDetail.status === "completed" ||
+          matchDetail.result === "super_over") && (
+          <div className="relative bg-white/10 border-b border-white/10 px-5 py-2 flex items-center justify-center">
+            <span className="text-[11px] font-bold text-white uppercase tracking-wider">
+              {matchDetail.result === "tie"
+                ? "🤝 Match Tied"
+                : matchDetail.result === "super_over"
+                  ? "⚔️ Match Tied! Super Over"
+                  : matchDetail.result === "no_result"
+                    ? "🌧️ No Result"
+                    : matchDetail.result === "draw"
+                      ? "🤝 Match Drawn"
+                      : matchDetail.winner_team_id
+                        ? `🏆 ${matchDetail.winner_team_id === matchDetail.team_a_id ? matchDetail.teamA?.name : matchDetail.teamB?.name} Won`
+                        : "Match Completed"}
+            </span>
+          </div>
+        )}
 
       <div className="relative p-5">
         <div className="flex items-center justify-between mb-3">
@@ -657,17 +693,17 @@ function ScoreboardHeader({
               <p className="text-sm font-bold text-amber-400">{rrr}</p>
             </div>
           )}
-          {isSecondInnings && firstInnings && (
+          {isChasing && previousInnings && (
             <div className="px-5">
               <span className="text-[9px] text-white/40 uppercase tracking-widest block mb-0.5">
-                1st Inn
+                {isSuperOver ? "Target" : "1st Inn"}
               </span>
               <p className="text-sm font-semibold text-white/60">
-                {firstInnings.total_runs}/{firstInnings.wickets}
+                {previousInnings.total_runs}/{previousInnings.wickets}
               </p>
             </div>
           )}
-          {!isSecondInnings && oversPerSide && (
+          {!isChasing && oversPerSide && (
             <div className="px-5">
               <span className="text-[9px] text-white/40 uppercase tracking-widest block mb-0.5">
                 Remaining
@@ -810,6 +846,62 @@ function PlayerAssignModal({
   );
 }
 
+function StrikeSelectionModal({
+  open,
+  striker,
+  nonStriker,
+  onSelect,
+}: {
+  open: boolean;
+  striker: { id: number; name: string } | null;
+  nonStriker: { id: number; name: string } | null;
+  onSelect: (strikerId: number, nonStrikerId: number) => void;
+}) {
+  if (!open || !striker || !nonStriker) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between bg-gray-50/50">
+          <h2 className="text-[15px] font-bold text-foreground">
+            Who is on strike?
+          </h2>
+        </div>
+        <div className="p-5 space-y-3">
+          <p className="text-xs text-muted mb-4">
+            Please confirm who will face the next delivery to ensure accurate
+            strike rotation.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => onSelect(striker.id, nonStriker.id)}
+              className="p-4 rounded-2xl border-2 border-transparent bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-200 transition-all text-center flex flex-col items-center gap-2"
+            >
+              <div className="w-8 h-8 rounded-full bg-emerald-200/50 flex items-center justify-center">
+                <Zap size={14} className="text-emerald-700" />
+              </div>
+              <p className="font-bold text-emerald-900 text-sm line-clamp-2">
+                {striker.name}
+              </p>
+            </button>
+            <button
+              onClick={() => onSelect(nonStriker.id, striker.id)}
+              className="p-4 rounded-2xl border-2 border-transparent bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-200 transition-all text-center flex flex-col items-center gap-2"
+            >
+              <div className="w-8 h-8 rounded-full bg-emerald-200/50 flex items-center justify-center">
+                <Zap size={14} className="text-emerald-700" />
+              </div>
+              <p className="font-bold text-emerald-900 text-sm line-clamp-2">
+                {nonStriker.name}
+              </p>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function getMissingPlayersDescription(inn: Innings | null): string | null {
   if (!inn) return null;
   const missing: string[] = [];
@@ -826,10 +918,26 @@ export default function ScoringPage() {
   const matchId = Number(params.matchId);
 
   const user = useAuthStore((s) => s.user);
-  const isScorer = user?.role === "admin" || user?.role === "scorer";
 
   const [matchDetail, setMatchDetail] = useState<Match | null>(null);
+  const [matchRules, setMatchRules] = useState<MatchRules | null>(null);
   const [activeInnings, setActiveInnings] = useState<Innings | null>(null);
+  const [concurrentMatch, setConcurrentMatch] = useState<{
+    id: number;
+    teamA?: { name: string };
+    teamB?: { name: string };
+  } | null>(null);
+  const [assignedScorers, setAssignedScorers] = useState<
+    { id: number; name: string; email: string; isBusy?: boolean }[]
+  >([]);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferring, setTransferring] = useState(false);
+
+  const isMatchAdmin = matchDetail && user?.id === matchDetail.created_by;
+  const isAssignedScorer =
+    assignedScorers.some((s) => s.id === user?.id) || isMatchAdmin;
+  const isActiveScorer = matchDetail?.active_scorer_id === user?.id;
+  const isScorer = isAssignedScorer;
   const [pageLoading, setPageLoading] = useState(true);
   const [viewerSelectedInnings, setViewerSelectedInnings] =
     useState<Innings | null>(null);
@@ -840,6 +948,7 @@ export default function ScoringPage() {
     null,
   );
   const [playerAssignOpen, setPlayerAssignOpen] = useState(false);
+  const [strikeSelectionOpen, setStrikeSelectionOpen] = useState(false);
   const [undoConfirmOpen, setUndoConfirmOpen] = useState(false);
   const [lastBowlerId, setLastBowlerId] = useState<number | null>(null);
 
@@ -871,6 +980,23 @@ export default function ScoringPage() {
       try {
         const matchRes = await getMatchById(matchId);
         setMatchDetail(matchRes.data);
+
+        try {
+          const scorersRes = await getMatchScorers(matchId);
+          setAssignedScorers(scorersRes.data ?? []);
+        } catch {}
+
+        try {
+          const sessionRes = await getActiveScoringSession();
+          if (sessionRes.data && sessionRes.data.id !== matchId) {
+            setConcurrentMatch(sessionRes.data);
+          }
+        } catch {}
+
+        try {
+          const rulesRes = await getMatchRules(matchId);
+          setMatchRules(rulesRes.data);
+        } catch {}
         await fetchInnings(matchId);
       } catch {
         toast.error("Failed to load match");
@@ -880,6 +1006,38 @@ export default function ScoringPage() {
     };
     init();
     return () => useBallEventStore.getState().reset();
+  }, [matchId]);
+
+  const handleTransferScoring = useCallback(
+    async (targetUserId: number) => {
+      try {
+        setTransferring(true);
+        await transferScoring(matchId, targetUserId);
+        const matchRes = await getMatchById(matchId);
+        setMatchDetail(matchRes.data);
+        setTransferOpen(false);
+        toast.success("Scoring transferred successfully");
+      } catch (error: unknown) {
+        toast.error(getErrorMessage(error));
+      } finally {
+        setTransferring(false);
+      }
+    },
+    [matchId],
+  );
+
+  const handleTakeoverScoring = useCallback(async () => {
+    try {
+      setTransferring(true);
+      await takeoverScoring(matchId);
+      const matchRes = await getMatchById(matchId);
+      setMatchDetail(matchRes.data);
+      toast.success("You are now the active scorer");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setTransferring(false);
+    }
   }, [matchId]);
 
   const hasInitializedRef = useRef(false);
@@ -934,7 +1092,7 @@ export default function ScoringPage() {
     if (bowlerDeliveries.length < 2) return false;
 
     const lastTwo = bowlerDeliveries.slice(-2);
-    return lastTwo.every((e) => e.is_wicket);
+    return lastTwo.every((e) => isBowlerWicket(e));
   }, [ballEvents, inn?.bowler_id]);
 
   const isScoringReady =
@@ -1081,7 +1239,58 @@ export default function ScoringPage() {
 
       await updateInningsPlayers(freshInnings.id, updates, matchId);
       await fetchCurrentInnings(freshInnings.id);
+      await fetchScorecard(freshInnings.id);
+
+      const updatedInnings = useBallEventStore.getState().currentInnings;
       setPlayerAssignOpen(false);
+
+      if (batsmanId !== null && updatedInnings) {
+        const isMidInnings =
+          updatedInnings.wickets > 0 ||
+          updatedInnings.overs > 0 ||
+          updatedInnings.balls > 0;
+
+        if (
+          isMidInnings &&
+          updatedInnings.striker_id &&
+          updatedInnings.non_striker_id
+        ) {
+          setStrikeSelectionOpen(true);
+        }
+      }
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const handleStrikeSelection = async (
+    strikerId: number,
+    nonStrikerId: number,
+  ) => {
+    const freshInnings = useBallEventStore.getState().currentInnings;
+    if (!freshInnings) return;
+
+    if (
+      freshInnings.striker_id === strikerId &&
+      freshInnings.non_striker_id === nonStrikerId
+    ) {
+      setStrikeSelectionOpen(false);
+      return;
+    }
+
+    try {
+      const { updateInningsPlayers } = useInningsStore.getState();
+      await updateInningsPlayers(
+        freshInnings.id,
+        {
+          striker_id: strikerId,
+          non_striker_id: nonStrikerId,
+        },
+        matchId,
+      );
+      await fetchCurrentInnings(freshInnings.id);
+      await fetchScorecard(freshInnings.id);
+      setStrikeSelectionOpen(false);
     } catch (err) {
       toast.error(getErrorMessage(err));
     }
@@ -1091,6 +1300,13 @@ export default function ScoringPage() {
     if (!inn) return;
     try {
       await undoLast(inn.id);
+
+      const res = await getMatchById(matchId);
+      setMatchDetail(res.data ?? null);
+
+      const { fetchInnings } = useInningsStore.getState();
+      await fetchInnings(matchId);
+
       setUndoConfirmOpen(false);
       toast.success("Last ball undone");
     } catch (err) {
@@ -1185,8 +1401,79 @@ export default function ScoringPage() {
     );
   }
 
+  if (
+    isAssignedScorer &&
+    !isActiveScorer &&
+    matchDetail.active_scorer_id !== null &&
+    matchDetail.status !== "completed"
+  ) {
+    const activeUser = matchDetail.active_scorer_id
+      ? assignedScorers.find((s) => s.id === matchDetail.active_scorer_id)
+      : null;
+    return (
+      <div className="max-w-2xl mx-auto space-y-3 pb-8">
+        <button
+          onClick={() => router.push(`/matches/${matchId}`)}
+          className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors"
+        >
+          <ArrowLeft size={14} /> Back to match
+        </button>
+        <div className="bg-white border border-blue-200 rounded-2xl p-6 text-center">
+          <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <User size={24} className="text-blue-500" />
+          </div>
+          <h2 className="text-lg font-bold text-foreground mb-2">
+            {matchDetail.active_scorer_id
+              ? "Scoring is currently being managed"
+              : "No active scorer"}
+          </h2>
+          <p className="text-sm text-muted mb-6 max-w-md mx-auto">
+            {activeUser ? (
+              <>
+                <span className="font-semibold text-foreground">
+                  {activeUser.name}
+                </span>{" "}
+                is the active scorer for this match.
+              </>
+            ) : matchDetail.active_scorer_id ? (
+              "Another scorer is currently managing this match."
+            ) : (
+              "Scoring hasn't been started or taken over yet."
+            )}{" "}
+            Please wait for them to transfer scoring access, or take over
+            scoring if needed.
+          </p>
+          <button
+            onClick={handleTakeoverScoring}
+            disabled={transferring}
+            className="px-6 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95 hover:bg-primary-dark disabled:opacity-50"
+          >
+            {transferring ? "Taking over..." : "Take Over Scoring"}
+          </button>
+        </div>
+        <ScoreboardHeader
+          inn={inn}
+          matchDetail={matchDetail}
+          isCompleted={isCompleted}
+          allInnings={innings}
+        />
+        <ViewerScoreboardContainer
+          allInnings={innings}
+          matchDetail={matchDetail}
+          showHeader={false}
+          onInningsChange={(selected) => setViewerSelectedInnings(selected)}
+        />
+      </div>
+    );
+  }
+
   const dismissedPlayerIds = ballEvents
-    .filter((e) => e.is_wicket && e.dismissed_player_id)
+    .filter(
+      (e) =>
+        e.is_wicket &&
+        e.dismissed_player_id &&
+        e.wicket_type !== "retired_hurt",
+    )
     .map((e) => e.dismissed_player_id!);
 
   const activeBatsmanIds = [
@@ -1214,6 +1501,34 @@ export default function ScoringPage() {
       >
         <ArrowLeft size={14} /> Back to match
       </button>
+
+      {matchDetail.active_scorer_id &&
+        !isCompleted &&
+        (() => {
+          const activeUser = assignedScorers.find(
+            (s) => s.id === matchDetail.active_scorer_id,
+          );
+          return (
+            <div className="flex items-center justify-between px-3 py-2 bg-accent/5 border border-accent/15 rounded-xl">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-accent/15 flex items-center justify-center">
+                  <User size={12} className="text-accent-dark" />
+                </div>
+                <p className="text-xs text-foreground">
+                  <span className="text-muted">Currently Scoring:</span>{" "}
+                  <span className="font-semibold">
+                    {activeUser?.name || "Unknown"}
+                  </span>
+                </p>
+              </div>
+              {isActiveScorer && (
+                <span className="text-[10px] font-bold bg-accent/10 text-accent-dark px-2 py-0.5 rounded-full border border-accent/20">
+                  You
+                </span>
+              )}
+            </div>
+          );
+        })()}
 
       <ScoreboardHeader
         inn={isCompleted && viewerSelectedInnings ? viewerSelectedInnings : inn}
@@ -1520,6 +1835,25 @@ export default function ScoringPage() {
               </button>
             </div>
           )}
+
+          {(isActiveScorer || isMatchAdmin) &&
+            assignedScorers.filter((s) => s.id !== user?.id).length > 0 && (
+              <div className="flex justify-center mt-2">
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await getMatchScorers(matchId);
+                      setAssignedScorers(res.data ?? []);
+                    } catch {}
+                    setTransferOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-all"
+                >
+                  <RefreshCw size={13} />
+                  Transfer Scoring
+                </button>
+              </div>
+            )}
         </>
       )}
 
@@ -1537,6 +1871,19 @@ export default function ScoringPage() {
             {inn.battingTeam?.name} scored {inn.total_runs}/{inn.wickets} in{" "}
             {formatOvers(inn.overs, inn.balls)} overs
           </p>
+
+          {isActiveScorer && ballEvents.length > 0 && (
+            <div className="flex justify-center mt-6 pt-4 border-t border-border">
+              <button
+                onClick={() => setUndoConfirmOpen(true)}
+                disabled={recording}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-muted bg-gray-50 border border-border rounded-xl hover:bg-gray-100 transition-all disabled:opacity-50"
+              >
+                <Undo2 size={13} />
+                Undo Last Ball
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -1601,6 +1948,8 @@ export default function ScoringPage() {
       <ExtrasPanel
         open={extrasOpen}
         extraType={selectedExtraType}
+        wideRuns={matchRules?.wide_runs ?? 1}
+        noBallRuns={matchRules?.no_ball_runs ?? 1}
         onClose={() => {
           setExtrasOpen(false);
           setSelectedExtraType(null);
@@ -1618,6 +1967,13 @@ export default function ScoringPage() {
         excludedBatsmanIds={excludedBatsmanIds}
         lastBowlerId={lastBowlerId}
         onSubmit={handlePlayerAssign}
+      />
+
+      <StrikeSelectionModal
+        open={strikeSelectionOpen}
+        striker={inn.striker ?? null}
+        nonStriker={inn.nonStriker ?? null}
+        onSelect={handleStrikeSelection}
       />
 
       {undoConfirmOpen && (
@@ -1644,6 +2000,83 @@ export default function ScoringPage() {
                 Undo
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {transferOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+          onClick={() => setTransferOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl p-5 shadow-2xl w-full max-w-sm mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-sm font-bold text-foreground mb-1">
+              Transfer Scoring
+            </h3>
+            <p className="text-xs text-muted mb-4">
+              Select a scorer to transfer scoring control to.
+            </p>
+            <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
+              {assignedScorers
+                .filter((s) => s.id !== user?.id)
+                .map((scorer) => (
+                  <button
+                    key={scorer.id}
+                    onClick={() =>
+                      !scorer.isBusy && handleTransferScoring(scorer.id)
+                    }
+                    disabled={transferring || scorer.isBusy}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
+                      scorer.isBusy
+                        ? "border-border bg-gray-50 opacity-60 cursor-not-allowed"
+                        : "border-border hover:bg-primary/5 hover:border-primary/30 disabled:opacity-50"
+                    }`}
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                        scorer.isBusy
+                          ? "bg-gray-200 text-gray-500"
+                          : "bg-primary/10 text-primary"
+                      }`}
+                    >
+                      {scorer.name?.charAt(0)?.toUpperCase() || "?"}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-foreground truncate">
+                        {scorer.name}
+                      </p>
+                      <p className="text-[11px] text-muted truncate">
+                        {scorer.email}
+                      </p>
+                    </div>
+                    {scorer.isBusy ? (
+                      <span className="text-[10px] font-semibold bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200 flex-shrink-0">
+                        Busy
+                      </span>
+                    ) : (
+                      <RefreshCw
+                        size={14}
+                        className="text-muted flex-shrink-0"
+                      />
+                    )}
+                  </button>
+                ))}
+              {assignedScorers.filter((s) => s.id !== user?.id).length ===
+                0 && (
+                <p className="text-xs text-muted text-center py-4">
+                  No other scorers assigned to this match.
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => setTransferOpen(false)}
+              className="w-full py-2.5 rounded-xl text-xs font-semibold border border-border bg-white text-muted hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}

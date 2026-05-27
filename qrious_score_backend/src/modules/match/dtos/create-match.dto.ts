@@ -1,8 +1,15 @@
-import { IsInt, IsDateString, IsString, IsOptional, Min } from 'class-validator';
+import {
+  IsInt,
+  IsDateString,
+  IsString,
+  IsOptional,
+  Min,
+} from 'class-validator';
 
 export class CreateMatchDto {
+  @IsOptional()
   @IsInt()
-  tournament_id: number;
+  tournament_id?: number;
 
   @IsInt()
   team_a_id: number;
@@ -13,11 +20,14 @@ export class CreateMatchDto {
   @IsDateString()
   match_date: string;
 
+  @IsOptional()
   @IsString()
-  venue: string;
+  venue?: string;
 
   @IsOptional()
   @IsInt()
   @Min(1)
   overs_per_side?: number;
+
+  declare created_by: number;
 }

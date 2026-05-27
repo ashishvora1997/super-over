@@ -13,6 +13,8 @@ import {
   currentRunRate,
   getBallLabel,
   getBallColor,
+  isInningsWicket,
+  getTeamAvatarText,
 } from "@/app/utils/cricket.utils";
 
 export function OverSummaryTimeline({
@@ -44,7 +46,7 @@ export function OverSummaryTimeline({
       <div className="space-y-2 mt-2">
         {completedOvers.map(([overNum, balls]) => {
           const runs = balls.reduce((s, b) => s + b.runs_bat + b.runs_extra, 0);
-          const wickets = balls.filter((b) => b.is_wicket).length;
+          const wickets = balls.filter((b) => isInningsWicket(b)).length;
           return (
             <div
               key={overNum}
@@ -124,7 +126,12 @@ export function ViewerScoreboardView({
       : null;
 
   const dismissedIds = ballEvents
-    .filter((e) => e.is_wicket && e.dismissed_player_id)
+    .filter(
+      (e) =>
+        e.is_wicket &&
+        e.dismissed_player_id &&
+        e.wicket_type !== "retired_hurt",
+    )
     .map((e) => e.dismissed_player_id!);
   const toBat = battingPlayers.filter(
     (p) =>
@@ -262,7 +269,13 @@ export function ViewerScoreboardView({
               </thead>
               <tbody>
                 {scorecard.batting
-                  .filter((b) => b.balls_faced > 0 || b.is_out)
+                  .filter(
+                    (b) =>
+                      b.balls_faced > 0 ||
+                      b.is_out ||
+                      b.player_id === inn.striker_id ||
+                      b.player_id === inn.non_striker_id,
+                  )
                   .map((b) => {
                     const isStriker = b.player_id === inn.striker_id;
                     return (
@@ -279,13 +292,17 @@ export function ViewerScoreboardView({
                           </span>
                           {b.is_out && (
                             <p className="text-[10px] text-muted">
-                              {b.wicket_type}
+                              {b.wicket_type === "retired_hurt"
+                                ? "retired hurt"
+                                : b.wicket_type}
                               {b.bowler_name ? ` b ${b.bowler_name}` : ""}
                             </p>
                           )}
                           {!b.is_out && (
                             <p className="text-[10px] text-accent-dark">
-                              not out
+                              {b.wicket_type === "retired_hurt"
+                                ? "retired hurt"
+                                : "not out"}
                             </p>
                           )}
                         </td>
@@ -556,12 +573,29 @@ export function ViewerScoreboardContainer({
             });
         };
 
+        const handlePlayersUpdated = (payload: { innings: Innings }) => {
+          if (payload.innings.id !== selectedInningsId) return;
+          getScorecard(selectedInningsId)
+            .then((scRes) => {
+              setData((prev) => ({
+                ...prev,
+                [selectedInningsId]: {
+                  scorecard: scRes.data,
+                  ballEvents: prev[selectedInningsId]?.ballEvents || [],
+                },
+              }));
+            })
+            .catch(() => {});
+        };
+
         socket.on("ball:recorded", handleBallRecorded);
         socket.on("ball:undone", handleBallUndone);
+        socket.on("innings:playersUpdated", handlePlayersUpdated);
 
         cleanup = () => {
           socket.off("ball:recorded", handleBallRecorded);
           socket.off("ball:undone", handleBallUndone);
+          socket.off("innings:playersUpdated", handlePlayersUpdated);
           leaveMatch(matchDetail.id);
         };
       },
@@ -610,7 +644,7 @@ export function ViewerScoreboardContainer({
                 ? matchDetail.teamA?.name
                 : matchDetail.teamB?.name) ||
               `Team ${inn.batting_team_id}`;
-            const shortName = teamName.slice(0, 3).toUpperCase();
+            const shortName = getTeamAvatarText(teamName);
 
             return (
               <button

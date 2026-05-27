@@ -14,6 +14,7 @@ import { InningsModule } from './modules/innings/innings.module';
 import { BallEventModule } from './modules/ball-event/ball-event.module';
 import { PointsTableModule } from './modules/points-table/points-table.module';
 import { ScoringGatewayModule } from './modules/scoring-gateway/scoring-gateway.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -46,9 +47,9 @@ import { ScoringGatewayModule } from './modules/scoring-gateway/scoring-gateway.
     InningsModule,
     BallEventModule,
     PointsTableModule,
+    RedisModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
-

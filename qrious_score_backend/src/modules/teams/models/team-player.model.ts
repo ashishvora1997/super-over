@@ -1,4 +1,10 @@
-import { Table, Column, Model, ForeignKey } from 'sequelize-typescript';
+import {
+  Table,
+  Column,
+  Model,
+  ForeignKey,
+  BelongsTo,
+} from 'sequelize-typescript';
 import { Team } from './teams.model';
 import { Player } from 'src/modules/players/models/players.model';
 
@@ -11,4 +17,10 @@ export class TeamPlayer extends Model {
   @ForeignKey(() => Player)
   @Column
   declare player_id: number;
+
+  @BelongsTo(() => Player)
+  declare player: Player;
+
+  @BelongsTo(() => Team)
+  declare team: Team;
 }
