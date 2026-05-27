@@ -16,7 +16,6 @@ import { getTournament } from "@/app/services/tournament.service";
 import { Tournament } from "@/app/types/tournaments.types";
 import { PointsTableEntry } from "@/app/types/points-table.types";
 
-/* ── colour helpers ────────────────────────────────────── */
 const RANK_STYLES: Record<number, string> = {
   1: "bg-gradient-to-r from-amber-400 to-yellow-500 text-white shadow-md shadow-amber-200/50",
   2: "bg-gradient-to-r from-slate-300 to-slate-400 text-white shadow-md shadow-slate-200/50",
@@ -48,7 +47,6 @@ function getTournamentGradient(id: number) {
   return gradients[id % gradients.length];
 }
 
-/* ── mobile card ──────────────────────────────────────── */
 function StandingCard({
   entry,
   rank,
@@ -112,7 +110,6 @@ function StandingCard({
   );
 }
 
-/* ── main page ────────────────────────────────────────── */
 export default function StandingsPage() {
   const params = useParams();
   const router = useRouter();
@@ -136,7 +133,6 @@ export default function StandingsPage() {
 
   const isLoading = loading || tournamentLoading;
 
-  /* ── loading state ── */
   if (isLoading) {
     return (
       <div className="max-w-5xl mx-auto space-y-5">
@@ -155,12 +151,11 @@ export default function StandingsPage() {
     );
   }
 
-  /* ── error state ── */
   if (error) {
     return (
       <div className="max-w-5xl mx-auto space-y-5">
         <button
-          onClick={() => router.push("/tournaments")}
+          onClick={() => router.push("/my-cricket?tab=tournaments")}
           className="flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors"
         >
           <ArrowLeft size={16} />
@@ -189,10 +184,9 @@ export default function StandingsPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      {/* ── header ── */}
       <div className="flex flex-col gap-4">
         <button
-          onClick={() => router.push("/tournaments")}
+          onClick={() => router.push("/my-cricket?tab=tournaments")}
           className="flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors w-fit"
         >
           <ArrowLeft size={16} />
@@ -211,10 +205,8 @@ export default function StandingsPage() {
               {tournament?.name ?? "Tournament"} — Standings
             </h1>
             <div className="flex items-center gap-3 mt-1">
-              {tournament?.location && (
-                <span className="text-sm text-muted">
-                  📍 {tournament.location}
-                </span>
+              {tournament?.city && (
+                <span className="text-sm text-muted">📍 {tournament.city}</span>
               )}
               <span className="text-sm text-muted">
                 {standings.length} team{standings.length !== 1 ? "s" : ""}
@@ -224,7 +216,6 @@ export default function StandingsPage() {
         </div>
       </div>
 
-      {/* ── summary cards ── */}
       {standings.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
@@ -278,7 +269,6 @@ export default function StandingsPage() {
         </div>
       )}
 
-      {/* ── empty state ── */}
       {standings.length === 0 && (
         <div className="bg-white border border-border rounded-2xl p-12 text-center">
           <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
@@ -294,7 +284,6 @@ export default function StandingsPage() {
         </div>
       )}
 
-      {/* ── mobile cards ── */}
       {standings.length > 0 && (
         <div className="sm:hidden space-y-3">
           {standings.map((entry, i) => (
@@ -303,7 +292,6 @@ export default function StandingsPage() {
         </div>
       )}
 
-      {/* ── desktop table ── */}
       {standings.length > 0 && (
         <div className="hidden sm:block bg-white border border-border rounded-2xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">

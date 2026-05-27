@@ -8,16 +8,17 @@ interface GetTeamsParams {
   limit?: number;
 }
 
-export interface BulkUploadResult {
-  success_count: number;
-  failed_count: number;
-  errors: { row: number; error: string }[];
-}
-
 export const getTeams = async (
   params?: GetTeamsParams,
 ): Promise<SuccessResponse<Team[]>> => {
   const res = await api.get("/teams", { params });
+  return res.data;
+};
+
+export const getTeamById = async (
+  id: number,
+): Promise<SuccessResponse<Team>> => {
+  const res = await api.get(`/teams/${id}`);
   return res.data;
 };
 
@@ -48,17 +49,17 @@ export const deleteTeam = async (
   return res.data;
 };
 
-export const assignPlayers = async (data: {
-  team_id: number;
-  player_ids: number[];
-}): Promise<SuccessResponse<null>> => {
-  const res = await api.post("/teams/assign-players", data);
+export const removePlayerFromTeam = async (
+  teamId: number,
+  playerId: number,
+): Promise<SuccessResponse<null>> => {
+  const res = await api.delete(`/teams/${teamId}/players/${playerId}`);
   return res.data;
 };
 
 export const setCaptain = async (data: {
   team_id: number;
-  player_id: number;
+  player_id: number | null;
 }): Promise<SuccessResponse<Team>> => {
   const res = await api.post("/teams/set-captain", data);
   return res.data;
@@ -66,19 +67,16 @@ export const setCaptain = async (data: {
 
 export const setWicketKeeper = async (data: {
   team_id: number;
-  player_id: number;
+  player_id: number | null;
 }): Promise<SuccessResponse<Team>> => {
   const res = await api.post("/teams/set-wicket-keeper", data);
   return res.data;
 };
 
-export const bulkUploadTeams = async (
-  file: File,
-): Promise<SuccessResponse<BulkUploadResult>> => {
-  const formData = new FormData();
-  formData.append("file", file);
-  const res = await api.post("/teams/bulk-upload", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+export const addPlayerByEmail = async (data: {
+  team_id: number;
+  email: string;
+}): Promise<SuccessResponse<unknown>> => {
+  const res = await api.post("/teams/add-player-by-email", data);
   return res.data;
 };

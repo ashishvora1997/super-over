@@ -14,6 +14,7 @@ interface Props {
   onSubmit: () => void;
   submitText?: string;
   loading?: boolean;
+  submitVariant?: "primary" | "danger";
 }
 
 export function FormModal({
@@ -24,6 +25,7 @@ export function FormModal({
   onSubmit,
   submitText = "Submit",
   loading = false,
+  submitVariant = "primary",
 }: Props) {
   return (
     <Modal open={open} onClose={onClose}>
@@ -36,7 +38,7 @@ export function FormModal({
           Cancel
         </Button>
 
-        <Button onClick={onSubmit} disabled={loading}>
+        <Button variant={submitVariant} onClick={onSubmit} disabled={loading}>
           {loading ? "Processing..." : submitText}
         </Button>
       </ModalFooter>

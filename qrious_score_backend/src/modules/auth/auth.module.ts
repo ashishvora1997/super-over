@@ -7,12 +7,12 @@ import { SequelizeModule } from '@nestjs/sequelize';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy/jwt.strategy';
-import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 import { UsersModule } from '../users/users.module';
 import { EmailService } from './services/email.service';
-import { PasswordReset } from './password-reset.model';
 import { User } from '../users/models/user.model';
+import { UserSessionModel } from './models/user-session.model';
 
 @Module({
   imports: [
@@ -31,7 +31,7 @@ import { User } from '../users/models/user.model';
     }),
 
     UsersModule,
-    SequelizeModule.forFeature([PasswordReset, User]),
+    SequelizeModule.forFeature([User, UserSessionModel]),
   ],
   providers: [AuthService, EmailService, JwtStrategy, JwtAuthGuard],
   controllers: [AuthController],

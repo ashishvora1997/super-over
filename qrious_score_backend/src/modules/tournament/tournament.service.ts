@@ -88,24 +88,44 @@ export class TournamentService {
       throw new BadRequestException('Start date cannot be after end date');
     }
 
-    const tournament = await this.tournamentModel.create({
-      ...data,
-      name: data.name.trim(),
-      organiser_email: data.organiser_email.trim().toLowerCase(),
-      status: 'upcoming',
-      created_by: data.created_by,
-    });
+    const normalizedEmail = data.organiser_email.trim().toLowerCase();
 
-    await this.rulesModel.create({
-      tournament_id: tournament.id,
-    });
+    const transaction = await this.tournamentModel.sequelize!.transaction();
 
-    await this.tournamentScorerModel.create({
-      tournament_id: tournament.id,
-      user_id: tournament.created_by,
-    });
+    try {
+      const tournament = await this.tournamentModel.create(
+        {
+          ...data,
+          name: data.name.trim(),
+          organizer_email: normalizedEmail,
+          status: 'upcoming',
+          created_by: data.created_by,
+        },
+        { transaction },
+      );
 
-    return successResponse('Tournament created successfully', tournament);
+      await this.rulesModel.create(
+        {
+          tournament_id: tournament.id,
+        },
+        { transaction },
+      );
+
+      await this.tournamentScorerModel.create(
+        {
+          tournament_id: tournament.id,
+          user_id: tournament.created_by,
+        },
+        { transaction },
+      );
+
+      await transaction.commit();
+
+      return successResponse('Tournament created successfully', tournament);
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
   }
 
   async findAll(
@@ -116,32 +136,48 @@ export class TournamentService {
   ): Promise<SuccessResponse<Tournament[]>> {
     const offset = (page - 1) * limit;
 
-    const orConditions: any[] = [];
+    const orConditions: WhereOptions<Tournament>[] = [];
 
     if (userId) {
-      orConditions.push({ created_by: userId });
+      orConditions.push({
+        created_by: userId,
+      });
 
       const userPlayer = await this.playerModel.findOne({
         where: { user_id: userId },
+        attributes: ['id'],
       });
 
       if (userPlayer) {
         const memberships = await this.teamPlayerModel.findAll({
-          where: { player_id: userPlayer.id },
+          where: {
+            player_id: userPlayer.id,
+          },
           attributes: ['team_id'],
         });
+
         const memberTeamIds = memberships.map((m) => m.team_id);
 
         if (memberTeamIds.length) {
           const tournamentTeams = await this.tournamentTeamModel.findAll({
-            where: { team_id: { [Op.in]: memberTeamIds } },
+            where: {
+              team_id: {
+                [Op.in]: memberTeamIds,
+              },
+            },
             attributes: ['tournament_id'],
           });
+
           const participatingTournamentIds = [
             ...new Set(tournamentTeams.map((tt) => tt.tournament_id)),
           ];
+
           if (participatingTournamentIds.length) {
-            orConditions.push({ id: { [Op.in]: participatingTournamentIds } });
+            orConditions.push({
+              id: {
+                [Op.in]: participatingTournamentIds,
+              },
+            });
           }
         }
       }
@@ -150,29 +186,56 @@ export class TournamentService {
         where: { user_id: userId },
         attributes: ['tournament_id'],
       });
+
       const scorerTournamentIds = scorerEntries.map((s) => s.tournament_id);
+
       if (scorerTournamentIds.length) {
-        orConditions.push({ id: { [Op.in]: scorerTournamentIds } });
+        orConditions.push({
+          id: {
+            [Op.in]: scorerTournamentIds,
+          },
+        });
       }
     }
 
     const where: WhereOptions<Tournament> = {};
 
     if (orConditions.length > 0) {
-      where[Op.or as any] = orConditions;
+      where[Op.or] = orConditions;
     }
 
-    if (search) {
-      (where as any).name = { [Op.iLike]: `%${search}%` };
+    if (search?.trim()) {
+      where.name = {
+        [Op.iLike]: `%${search.trim()}%`,
+      };
     }
 
     const { rows, count } = await this.tournamentModel.findAndCountAll({
       where,
+
+      attributes: [
+        'id',
+        'name',
+        'city',
+        'start_date',
+        'end_date',
+        'status',
+        'created_by',
+
+        [
+          this.tournamentModel.sequelize!.literal(`(
+            SELECT COUNT(*)
+            FROM tournament_teams tt
+            WHERE tt.tournament_id = "Tournament"."id"
+          )`),
+          'team_count',
+        ],
+      ],
+
       limit,
       offset,
-      include: [{ model: Team, through: { attributes: [] } }],
+
       order: [['createdAt', 'DESC']],
-      distinct: true,
     });
 
     return successResponse('Tournaments retrieved successfully', rows, {
@@ -239,84 +302,83 @@ export class TournamentService {
 
     const uniqueTeamIds = [...new Set(team_ids)];
 
-    const teamsWithPlayers = await this.teamModel.findAll({
-      where: { id: uniqueTeamIds },
-      include: [
-        {
-          model: Player,
-          as: 'players',
-          through: { attributes: [] },
-          attributes: ['id', 'name'],
-        },
-      ],
-    });
+    const transaction = await this.tournamentModel.sequelize!.transaction();
 
-    const teamNames = teamsWithPlayers.map((t) => t.name.toLowerCase());
-    const uniqueNames = new Set(teamNames);
-    if (uniqueNames.size !== teamNames.length) {
-      throw new BadRequestException(
-        'Duplicate teams found. A team cannot appear twice inside the same tournament.',
+    try {
+      const teamsWithPlayers = await this.teamModel.findAll({
+        where: { id: uniqueTeamIds },
+
+        attributes: ['id', 'name'],
+
+        include: [
+          {
+            model: Player,
+            as: 'players',
+
+            attributes: ['id', 'name'],
+
+            through: {
+              attributes: [],
+            },
+          },
+        ],
+
+        transaction,
+      });
+
+      const teamNames = teamsWithPlayers.map((t) =>
+        t.name.trim().toLowerCase(),
       );
-    }
 
-    const playerTeamMap = new Map<number, { name: string; teamName: string }>();
-    const duplicates: { playerName: string; teams: string[] }[] = [];
-
-    for (const team of teamsWithPlayers) {
-      for (const player of team.players ?? []) {
-        const existing = playerTeamMap.get(player.id);
-        if (existing) {
-          const duplicateEntry = duplicates.find(
-            (d) => d.playerName === player.name,
-          );
-          if (duplicateEntry) {
-            if (!duplicateEntry.teams.includes(team.name)) {
-              duplicateEntry.teams.push(team.name);
-            }
-          } else {
-            duplicates.push({
-              playerName: player.name,
-              teams: [existing.teamName, team.name],
-            });
-          }
-        } else {
-          playerTeamMap.set(player.id, {
-            name: player.name,
-            teamName: team.name,
-          });
-        }
-      }
-    }
-
-    if (duplicates.length > 0) {
-      if (duplicates.length === 1) {
-        const d = duplicates[0];
+      if (new Set(teamNames).size !== teamNames.length) {
         throw new BadRequestException(
-          `"${d.playerName}" belongs to ${d.teams.length} teams. Remove from one team.`,
+          'Duplicate teams found. A team cannot appear twice inside the same tournament.',
         );
       }
-      throw new BadRequestException(
-        `${duplicates.length} players are assigned to multiple teams. Please resolve conflicts.`,
+
+      const playerTeamMap = new Map<number, string>();
+
+      for (const team of teamsWithPlayers) {
+        for (const player of team.players ?? []) {
+          const existingTeam = playerTeamMap.get(player.id);
+
+          if (existingTeam) {
+            throw new BadRequestException(
+              `"${player.name}" is already part of another selected team.`,
+            );
+          }
+
+          playerTeamMap.set(player.id, team.name);
+        }
+      }
+
+      await this.tournamentTeamModel.destroy({
+        where: { tournament_id },
+        transaction,
+      });
+
+      const payload = uniqueTeamIds.map((team_id) => ({
+        tournament_id,
+        team_id,
+      }));
+
+      await this.tournamentTeamModel.bulkCreate(payload, {
+        transaction,
+      });
+
+      await this.pointsTableService.initializeForTournament(
+        tournament_id,
+        uniqueTeamIds,
+        transaction,
       );
+
+      await transaction.commit();
+
+      return successResponse('Teams assigned successfully', null);
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
     }
-
-    const payload = uniqueTeamIds.map((team_id) => ({
-      tournament_id,
-      team_id,
-    }));
-
-    await this.tournamentTeamModel.destroy({
-      where: { tournament_id },
-    });
-
-    await this.tournamentTeamModel.bulkCreate(payload);
-
-    await this.pointsTableService.initializeForTournament(
-      tournament_id,
-      uniqueTeamIds,
-    );
-
-    return successResponse('Teams assigned successfully', null);
   }
 
   async removeTeam(
@@ -325,46 +387,82 @@ export class TournamentService {
     userId: number,
   ): Promise<SuccessResponse<null>> {
     const tournament = await this.findTournamentById(tournamentId);
+
     this.assertOwner(tournament, userId);
 
-    const tournamentTeam = await this.tournamentTeamModel.findOne({
-      where: { tournament_id: tournamentId, team_id: teamId },
-    });
+    const transaction = await this.tournamentModel.sequelize!.transaction();
 
-    if (!tournamentTeam) {
-      throw new NotFoundException('Team is not part of this tournament');
-    }
+    try {
+      const tournamentTeam = await this.tournamentTeamModel.findOne({
+        where: {
+          tournament_id: tournamentId,
+          team_id: teamId,
+        },
 
-    const activeMatches = await this.matchModel.count({
-      where: {
-        tournament_id: tournamentId,
-        [Op.or]: [{ team_a_id: teamId }, { team_b_id: teamId }],
-        status: { [Op.in]: ['live', 'completed'] },
-      },
-    });
+        attributes: ['id'],
 
-    if (activeMatches > 0) {
-      throw new BadRequestException(
-        'Cannot remove this team — it has live or completed matches in this tournament',
+        transaction,
+      });
+
+      if (!tournamentTeam) {
+        throw new NotFoundException('Team is not part of this tournament');
+      }
+
+      const activeMatches = await this.matchModel.count({
+        where: {
+          tournament_id: tournamentId,
+
+          [Op.or]: [{ team_a_id: teamId }, { team_b_id: teamId }],
+
+          status: {
+            [Op.in]: ['live', 'completed'],
+          },
+        },
+
+        transaction,
+      });
+
+      if (activeMatches > 0) {
+        throw new BadRequestException(
+          'Cannot remove this team — it has live or completed matches in this tournament',
+        );
+      }
+
+      await this.matchModel.destroy({
+        where: {
+          tournament_id: tournamentId,
+
+          [Op.or]: [{ team_a_id: teamId }, { team_b_id: teamId }],
+
+          status: 'scheduled',
+        },
+
+        transaction,
+      });
+
+      await this.tournamentTeamModel.destroy({
+        where: {
+          tournament_id: tournamentId,
+          team_id: teamId,
+        },
+
+        transaction,
+      });
+
+      await this.pointsTableService.removeTeamFromTournament(
+        tournamentId,
+        teamId,
+        transaction,
       );
+
+      await transaction.commit();
+
+      return successResponse('Team removed from tournament successfully', null);
+    } catch (error) {
+      await transaction.rollback();
+
+      throw error;
     }
-
-    await this.matchModel.destroy({
-      where: {
-        tournament_id: tournamentId,
-        [Op.or]: [{ team_a_id: teamId }, { team_b_id: teamId }],
-        status: 'scheduled',
-      },
-    });
-
-    await tournamentTeam.destroy();
-
-    await this.pointsTableService.removeTeamFromTournament(
-      tournamentId,
-      teamId,
-    );
-
-    return successResponse('Team removed from tournament successfully', null);
   }
 
   async getRules(tournamentId: number): Promise<SuccessResponse<Rules>> {

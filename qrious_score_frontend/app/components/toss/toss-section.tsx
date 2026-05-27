@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Coins } from "lucide-react";
+import { Coins, Clock } from "lucide-react";
 import { FormModal } from "@/app/components/ui/modal/form-modal";
-import { RoleGuard } from "@/app/components/auth/role-guard";
 import { Match } from "@/app/types/match.types";
 import { Select } from "@/app/components/ui/select";
 
@@ -11,6 +10,7 @@ import toast from "react-hot-toast";
 import { getErrorMessage } from "@/app/utils/error-handler";
 import { useTossStore } from "@/app/store/toss.store";
 import { useInningsStore } from "@/app/store/innings.store";
+import { useAuthStore } from "@/app/store/auth.store";
 import { CreateTossPayload, TossElection } from "@/app/types/toss.types";
 
 interface Props {
@@ -20,11 +20,14 @@ interface Props {
 export function TossSection({ match }: Props) {
   const { toss, recordToss } = useTossStore();
   const { fetchInnings } = useInningsStore();
+  const user = useAuthStore((state) => state.user);
 
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [winnerId, setWinnerId] = useState<number | "">("");
   const [elected, setElected] = useState<TossElection>("bat");
+
+  const isMatchAdmin = user?.id === match.created_by;
 
   const teams = [
     { id: match.team_a_id, name: match.teamA?.name ?? "Team A" },
@@ -93,6 +96,26 @@ export function TossSection({ match }: Props) {
     );
   }
 
+  if (!isMatchAdmin) {
+    return (
+      <div className="bg-white border border-dashed border-border rounded-2xl p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-7 h-7 bg-gray-100 rounded-lg flex items-center justify-center">
+            <Coins size={14} className="text-muted" />
+          </div>
+          <span className="text-sm font-semibold text-foreground">Toss</span>
+        </div>
+        <div className="flex items-center gap-2.5 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+          <Clock size={16} className="text-amber-600 flex-shrink-0" />
+          <p className="text-xs text-amber-800 font-medium leading-relaxed">
+            The toss is yet to be conducted by the match organizer. Scoring will
+            be available once the toss is completed and the match goes live.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="bg-white border border-dashed border-border rounded-2xl p-4">
@@ -106,16 +129,14 @@ export function TossSection({ match }: Props) {
               <p className="text-xs text-muted">Not recorded yet</p>
             </div>
           </div>
-          <RoleGuard allowedRoles={["admin", "scorer"]}>
-            {match.status !== "completed" && (
-              <button
-                onClick={() => setOpen(true)}
-                className="px-3.5 py-2 bg-primary text-white text-xs font-semibold rounded-xl shadow-sm shadow-primary/25 transition-all active:scale-95 hover:bg-primary-dark"
-              >
-                Record Toss
-              </button>
-            )}
-          </RoleGuard>
+          {match.status !== "completed" && (
+            <button
+              onClick={() => setOpen(true)}
+              className="px-3.5 py-2 bg-primary text-white text-xs font-semibold rounded-xl shadow-sm shadow-primary/25 transition-all active:scale-95 hover:bg-primary-dark"
+            >
+              Record Toss
+            </button>
+          )}
         </div>
       </div>
 

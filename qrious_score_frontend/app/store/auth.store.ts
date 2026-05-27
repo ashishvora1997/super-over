@@ -1,79 +1,60 @@
 import { create } from "zustand";
-
-export interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: string;
-  is_profile_complete?: boolean;
-  is_email_verified?: boolean;
-}
-
-interface AuthState {
-  user: User | null;
-  token: string | null;
-  isInitialized: boolean;
-
-  setAuth: (data: { user: User; token: string }) => void;
-  loadUserFromStorage: () => void;
-  updateUser: (fields: Partial<User>) => void;
-  logout: () => void;
-}
+import { AuthState, User } from "../types/auth.types";
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  token: null,
-  isInitialized: false,
+  accessToken: null,
 
-  setAuth: (data) => {
-    document.cookie = `token=${data.token}; path=/; max-age=86400; SameSite=Lax`;
+  isAuthenticated: false,
+  isLoading: true,
 
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("user", JSON.stringify(data.user));
-
-    set({ user: data.user, token: data.token });
+  setAuth: ({ user, accessToken }) => {
+    set({
+      user,
+      accessToken,
+      isAuthenticated: !!user,
+      isLoading: false,
+    });
   },
 
-  loadUserFromStorage: () => {
-    const token =
-      localStorage.getItem("token") ||
-      document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("token="))
-        ?.split("=")[1];
-
-    const userStr = localStorage.getItem("user");
-    let parsedUser = null;
-    if (userStr && userStr !== "undefined") {
-      try {
-        parsedUser = JSON.parse(userStr);
-      } catch (e) {
-        console.error("Failed to parse user from storage:", e);
-      }
-    }
-
+  setAccessToken: (token) => {
     set({
-      token: token || null,
-      user: parsedUser,
-      isInitialized: true,
+      accessToken: token,
+    });
+  },
+
+  setUser: (user: User | null) => {
+    set({
+      user,
+      isAuthenticated: !!user,
     });
   },
 
   updateUser: (fields) => {
     set((state) => {
       if (!state.user) return state;
-      const updated = { ...state.user, ...fields };
-      localStorage.setItem("user", JSON.stringify(updated));
-      return { user: updated };
+
+      return {
+        user: {
+          ...state.user,
+          ...fields,
+        },
+      };
     });
   },
 
-  logout: () => {
-    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+  clearAuth: () => {
+    set({
+      user: null,
+      accessToken: null,
+      isAuthenticated: false,
+      isLoading: false,
+    });
+  },
 
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-
-    set({ user: null, token: null });
+  setLoading: (loading) => {
+    set({
+      isLoading: loading,
+    });
   },
 }));

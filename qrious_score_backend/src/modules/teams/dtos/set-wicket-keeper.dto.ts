@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class SetWicketKeeperDto {
   @IsInt()
@@ -6,6 +6,6 @@ export class SetWicketKeeperDto {
   team_id!: number;
 
   @IsInt()
-  @IsNotEmpty()
-  player_id!: number;
+  @IsOptional()
+  player_id!: number | null;
 }

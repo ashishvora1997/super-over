@@ -6,16 +6,16 @@ import { useAuthStore } from "@/app/store/auth.store";
 
 export default function HomePage() {
   const router = useRouter();
-  const { token, isInitialized } = useAuthStore();
+
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  const isLoading = useAuthStore((state) => state.isLoading);
 
   useEffect(() => {
-    if (!isInitialized) return;
-    if (token) {
-      window.location.href = "/dashboard";
-    } else {
-      router.replace("/login");
-    }
-  }, [isInitialized, token, router]);
+    if (isLoading) return;
+
+    router.replace(isAuthenticated ? "/dashboard" : "/login");
+  }, [isAuthenticated, isLoading, router]);
 
   return null;
 }

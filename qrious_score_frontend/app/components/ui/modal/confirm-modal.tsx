@@ -10,6 +10,7 @@ export function ConfirmModal({
   description = "This action cannot be undone.",
   confirmText = "Delete",
   loading = false,
+  variant = "primary",
 }: {
   open: boolean;
   onClose: () => void;
@@ -18,6 +19,7 @@ export function ConfirmModal({
   description?: string;
   confirmText?: string;
   loading?: boolean;
+  variant?: "primary" | "danger";
 }) {
   return (
     <FormModal
@@ -27,6 +29,7 @@ export function ConfirmModal({
       onSubmit={onConfirm}
       submitText={confirmText}
       loading={loading}
+      submitVariant={variant}
     >
       <p className="text-sm text-muted">{description}</p>
     </FormModal>

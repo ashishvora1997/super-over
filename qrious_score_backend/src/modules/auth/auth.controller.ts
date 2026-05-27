@@ -1,11 +1,18 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Request as ExpressRequest,
+  Response as ExpressResponse,
+} from 'express';
+
 import { RegisterDto } from './dtos/register.dto';
-import { AuthService } from './auth.service';
 import { LoginDto } from './dtos/login.dto';
 import { ForgotPasswordDto } from './dtos/forgot-password.dto';
 import { ResetPasswordDto } from './dtos/reset-password.dto';
 import { VerifyEmailDto } from './dtos/verify-email.dto';
 import { ResendOtpDto } from './dtos/resend-otp.dto';
+
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+import { AuthService } from './auth.service';
 
 @Controller('auth')
 export class AuthController {
@@ -27,8 +34,12 @@ export class AuthController {
   }
 
   @Post('login')
-  login(@Body() body: LoginDto) {
-    return this.authService.login(body);
+  login(
+    @Body() body: LoginDto,
+    @Req() req: ExpressRequest,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ) {
+    return this.authService.login(body, req, res);
   }
 
   @Post('forgot-password')
@@ -39,5 +50,30 @@ export class AuthController {
   @Post('reset-password')
   resetPassword(@Body() body: ResetPasswordDto) {
     return this.authService.resetPassword(body);
+  }
+
+  @Post('refresh')
+  refresh(
+    @Req() req: ExpressRequest,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ) {
+    return this.authService.refresh(req, res);
+  }
+
+  @Post('logout')
+  logout(
+    @Req() req: ExpressRequest,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ) {
+    return this.authService.logout(req, res);
+  }
+
+  @Post('logout-all-devices')
+  @UseGuards(JwtAuthGuard)
+  logoutAllDevices(
+    @Req() req: ExpressRequest,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ) {
+    return this.authService.logoutAllDevices(req, res);
   }
 }

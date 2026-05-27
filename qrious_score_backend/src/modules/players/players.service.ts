@@ -1,23 +1,25 @@
-import 'multer';
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
+import { Op } from 'sequelize';
+
 import { Player } from './models/players.model';
 import { CreatePlayerDto } from './dtos/create-player.dto';
 import { UpdatePlayerDto } from './dtos/update-player.dto';
-import { Op } from 'sequelize';
-import { successResponse } from 'src/common/utils/response.util';
+import { UpsertProfileDto } from './dtos/upsert-profile.dto';
 import {
   FindPlayersQuery,
   PlayerWhereOptions,
 } from './interfaces/find-players-query.interface';
+
 import { SuccessResponse } from 'src/common/types/response.type';
+import { successResponse } from 'src/common/utils/response.util';
 import { getPagination } from 'src/common/utils/pagination';
 import { User } from '../users/models/user.model';
-import { UpsertProfileDto } from './dtos/upsert-profile.dto';
 
 @Injectable()
 export class PlayersService {
@@ -150,14 +152,14 @@ export class PlayersService {
       include: [
         {
           model: User,
-          attributes: ['id', 'name', 'email', 'role', 'is_profile_complete'],
+          attributes: ['id', 'name', 'email', 'is_profile_complete'],
         },
       ],
     });
 
     if (!player) {
       const user = await User.findByPk(userId, {
-        attributes: ['id', 'name', 'email', 'role', 'is_profile_complete'],
+        attributes: ['id', 'name', 'email', 'is_profile_complete'],
       });
 
       if (!user) {
@@ -181,7 +183,7 @@ export class PlayersService {
         include: [
           {
             model: User,
-            attributes: ['id', 'name', 'email', 'role', 'is_profile_complete'],
+            attributes: ['id', 'name', 'email', 'is_profile_complete'],
           },
         ],
       });

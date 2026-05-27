@@ -28,6 +28,8 @@ export interface Team {
     name: string;
   }[];
 
+  player_count?: number;
+
   user_id?: number | null;
   created_by?: number;
 
@@ -45,6 +47,7 @@ export interface TeamState {
   pageSize: number;
 
   fetchTeams: (search?: string, page?: number) => Promise<void>;
+  fetchTeamById: (id: number) => Promise<Team | null>;
   fetchTeamsList: () => Promise<void>;
 
   createTeam: (data: Partial<Team>) => Promise<SuccessResponse<Team>>;

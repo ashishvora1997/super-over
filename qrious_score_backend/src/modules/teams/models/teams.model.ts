@@ -35,6 +35,12 @@ export class Team extends Model {
   @Column(DataType.TEXT)
   declare description?: string;
 
+  @Column
+  declare captain_name?: string;
+
+  @Column
+  declare captain_email?: string;
+
   @ForeignKey(() => Player)
   @Column(DataType.INTEGER)
   declare captain_id?: number;
@@ -52,6 +58,13 @@ export class Team extends Model {
   @ForeignKey(() => User)
   @Column(DataType.INTEGER)
   declare user_id?: number;
+
+  @ForeignKey(() => User)
+  @Column(DataType.INTEGER)
+  declare created_by?: number;
+
+  @BelongsTo(() => User, 'created_by')
+  declare creator?: User;
 
   @BelongsToMany(() => Player, () => TeamPlayer)
   declare players: Player[];

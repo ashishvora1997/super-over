@@ -1,20 +1,35 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { Request } from 'express';
 
 import { TossService } from './toss.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
+
 import { CreateTossDto } from './dtos/create-toss.dto';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+interface RequestWithUser extends Request {
+  user: { id: number; email: string; role: string };
+}
+
+@UseGuards(JwtAuthGuard)
 @Controller('matches/:matchId/toss')
 export class TossController {
   constructor(private readonly tossService: TossService) {}
 
-  @Roles('admin', 'scorer')
   @Post()
-  create(@Param('matchId') matchId: number, @Body() dto: CreateTossDto) {
-    return this.tossService.create(Number(matchId), dto);
+  create(
+    @Param('matchId') matchId: number,
+    @Body() dto: CreateTossDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.tossService.create(Number(matchId), dto, req.user.id);
   }
 
   @Get()

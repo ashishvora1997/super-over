@@ -1,44 +1,80 @@
-import { variantStyles } from "@/app/types/constants";
-import { StatCardProps } from "@/app/types/dashboard.types";
-import { TrendingUp } from "lucide-react";
+"use client";
+
+import { LucideIcon, TrendingUp, Minus } from "lucide-react";
+
+export interface StatCardProps {
+  title: string;
+  value: string;
+  subtitle: string;
+  trend?: string;
+  trendUp?: boolean | null;
+  icon: LucideIcon;
+  loading?: boolean;
+  accentColor?: string;
+  iconColor?: string;
+}
+
+function SkeletonCard() {
+  return (
+    <div className="bg-white border border-border rounded-2xl p-4 flex flex-col gap-3 animate-pulse">
+      <div className="w-11 h-11 rounded-xl bg-gray-100" />
+      <div className="space-y-2">
+        <div className="h-8 w-20 bg-gray-100 rounded-lg" />
+        <div className="h-3 w-28 bg-gray-50 rounded-lg" />
+      </div>
+      <div className="h-3 w-24 bg-gray-50 rounded-lg" />
+    </div>
+  );
+}
 
 export function StatCard({
-  title,
   value,
-  icon: Icon,
+  subtitle,
   trend,
-  variant,
-  pulse = false,
+  trendUp,
+  icon: Icon,
+  loading = false,
+  accentColor = "bg-primary/10",
+  iconColor = "text-primary",
 }: StatCardProps) {
-  const c = variantStyles[variant];
+  if (loading) return <SkeletonCard />;
 
   return (
-    <div className="bg-white border border-border rounded-2xl p-4 hover:shadow-md transition">
-      <div className="flex items-start justify-between">
-        <div
-          className={`w-10 h-10 ${c.iconBg} rounded-xl flex items-center justify-center`}
-        >
-          <Icon size={18} className={c.icon} />
-        </div>
-
-        {pulse && (
-          <span className="text-xs font-semibold text-accent flex items-center gap-1">
-            ● Live
-          </span>
-        )}
+    <div className="bg-white border border-border rounded-2xl p-4 flex flex-col gap-3 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group">
+      <div
+        className={`w-11 h-11 rounded-xl ${accentColor} flex items-center justify-center`}
+      >
+        <Icon size={18} className={iconColor} />
       </div>
 
-      <div className="mt-3">
-        <p className="text-xs text-muted font-medium">{title}</p>
-        <h3 className="text-2xl font-bold text-foreground mt-0.5">{value}</h3>
-
-        <p
-          className={`text-xs mt-1 flex items-center gap-1 font-medium ${c.badge}`}
-        >
-          <TrendingUp size={12} />
-          {trend}
+      <div>
+        <p className="text-[1.6rem] font-bold text-foreground leading-none tracking-tight">
+          {value}
         </p>
+        <p className="text-xs text-muted mt-1">{subtitle}</p>
       </div>
+
+      {trend && (
+        <div
+          className={`flex items-center gap-1 text-xs font-medium ${
+            trendUp === true
+              ? "text-accent"
+              : trendUp === false
+                ? "text-destructive"
+                : "text-muted"
+          }`}
+        >
+          {trendUp === null ? (
+            <Minus size={12} />
+          ) : (
+            <TrendingUp
+              size={12}
+              className={trendUp === false ? "rotate-180" : ""}
+            />
+          )}
+          {trend}
+        </div>
+      )}
     </div>
   );
 }

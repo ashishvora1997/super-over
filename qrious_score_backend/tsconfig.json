@@ -20,6 +20,8 @@
     "strictBindCallApply": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+
+    "esModuleInterop": true
   }
 }

@@ -1,7 +1,8 @@
 import {
+  BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
-  BadRequestException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Transaction } from 'sequelize';
@@ -32,28 +33,59 @@ export class PointsTableService {
     teamIds: number[],
     transaction?: Transaction,
   ): Promise<void> {
-    await this.pointsTableModel.destroy({
+    const existingRows = await this.pointsTableModel.findAll({
       where: { tournament_id: tournamentId },
       transaction,
     });
 
-    const payload = teamIds.map((teamId) => ({
-      tournament_id: tournamentId,
-      team_id: teamId,
-      matches_played: 0,
-      wins: 0,
-      losses: 0,
-      ties: 0,
-      no_results: 0,
-      points: 0,
-      runs_scored: 0,
-      balls_faced: 0,
-      runs_conceded: 0,
-      balls_bowled: 0,
-      net_run_rate: null,
-    }));
+    const existingTeamIds = existingRows.map((row) => row.team_id);
 
-    await this.pointsTableModel.bulkCreate(payload, { transaction });
+    const teamsToRemove = existingTeamIds.filter((id) => !teamIds.includes(id));
+    if (teamsToRemove.length > 0) {
+      await this.pointsTableModel.destroy({
+        where: {
+          tournament_id: tournamentId,
+          team_id: teamsToRemove,
+        },
+        transaction,
+      });
+    }
+
+    const teamsToAdd = teamIds.filter((id) => !existingTeamIds.includes(id));
+    if (teamsToAdd.length > 0) {
+      const payload = teamsToAdd.map((teamId) => ({
+        tournament_id: tournamentId,
+        team_id: teamId,
+        matches_played: 0,
+        wins: 0,
+        losses: 0,
+        ties: 0,
+        no_results: 0,
+        points: 0,
+        runs_scored: 0,
+        balls_faced: 0,
+        runs_conceded: 0,
+        balls_bowled: 0,
+        net_run_rate: null,
+      }));
+
+      await this.pointsTableModel.bulkCreate(payload, { transaction });
+    }
+
+    await this.recalculateTournamentStandings(tournamentId, transaction);
+  }
+
+  async removeTeamFromTournament(
+    tournamentId: number,
+    teamId: number,
+    transaction?: Transaction,
+  ): Promise<void> {
+    await this.pointsTableModel.destroy({
+      where: { tournament_id: tournamentId, team_id: teamId },
+      transaction,
+    });
+
+    await this.recalculateTournamentStandings(tournamentId, transaction);
   }
 
   async updateFromMatch(
@@ -66,70 +98,17 @@ export class PointsTableService {
       throw new NotFoundException('Match not found');
     }
 
+    if (!match.tournament_id) {
+      return;
+    }
+
     if (match.status !== 'completed') {
       throw new BadRequestException(
         'Cannot update points table: match is not completed',
       );
     }
 
-    const teamARow = await this.findOrCreateRow(
-      match.tournament_id,
-      match.team_a_id,
-      transaction,
-    );
-
-    const teamBRow = await this.findOrCreateRow(
-      match.tournament_id,
-      match.team_b_id,
-      transaction,
-    );
-
-    teamARow.matches_played += 1;
-    teamBRow.matches_played += 1;
-
-    if (match.winner_team_id) {
-      if (match.winner_team_id === match.team_a_id) {
-        teamARow.wins += 1;
-        teamARow.points += 2;
-        teamBRow.losses += 1;
-      } else {
-        teamBRow.wins += 1;
-        teamBRow.points += 2;
-        teamARow.losses += 1;
-      }
-    } else if (match.result === 'no_result') {
-      teamARow.no_results += 1;
-      teamARow.points += 1;
-      teamBRow.no_results += 1;
-      teamBRow.points += 1;
-    } else if (match.result === 'tie' || match.result === 'draw') {
-      teamARow.ties += 1;
-      teamARow.points += 1;
-      teamBRow.ties += 1;
-      teamBRow.points += 1;
-    } else if (match.result === 'super_over') {
-      teamARow.matches_played -= 1;
-      teamBRow.matches_played -= 1;
-    } else {
-      teamARow.ties += 1;
-      teamARow.points += 1;
-      teamBRow.ties += 1;
-      teamBRow.points += 1;
-    }
-
-    await this.updateNrrAccumulators(
-      match,
-      teamARow,
-      teamBRow,
-      'add',
-      transaction,
-    );
-
-    this.recalculateNrr(teamARow);
-    this.recalculateNrr(teamBRow);
-
-    await teamARow.save({ transaction });
-    await teamBRow.save({ transaction });
+    await this.recalculateTournamentStandings(match.tournament_id, transaction);
   }
 
   async reverseFromMatch(
@@ -142,70 +121,108 @@ export class PointsTableService {
       throw new NotFoundException('Match not found');
     }
 
-    const teamARow = await this.pointsTableModel.findOne({
-      where: {
-        tournament_id: match.tournament_id,
-        team_id: match.team_a_id,
-      },
-      transaction,
-    });
-
-    const teamBRow = await this.pointsTableModel.findOne({
-      where: {
-        tournament_id: match.tournament_id,
-        team_id: match.team_b_id,
-      },
-      transaction,
-    });
-
-    if (!teamARow || !teamBRow) {
+    if (!match.tournament_id) {
       return;
     }
 
-    teamARow.matches_played = Math.max(0, teamARow.matches_played - 1);
-    teamBRow.matches_played = Math.max(0, teamBRow.matches_played - 1);
+    await this.recalculateTournamentStandings(match.tournament_id, transaction);
+  }
 
-    if (match.winner_team_id) {
-      if (match.winner_team_id === match.team_a_id) {
-        teamARow.wins = Math.max(0, teamARow.wins - 1);
-        teamARow.points = Math.max(0, teamARow.points - 2);
-        teamBRow.losses = Math.max(0, teamBRow.losses - 1);
-      } else {
-        teamBRow.wins = Math.max(0, teamBRow.wins - 1);
-        teamBRow.points = Math.max(0, teamBRow.points - 2);
-        teamARow.losses = Math.max(0, teamARow.losses - 1);
-      }
-    } else if (match.result === 'no_result') {
-      teamARow.no_results = Math.max(0, teamARow.no_results - 1);
-      teamARow.points = Math.max(0, teamARow.points - 1);
-      teamBRow.no_results = Math.max(0, teamBRow.no_results - 1);
-      teamBRow.points = Math.max(0, teamBRow.points - 1);
-    } else if (match.result === 'tie' || match.result === 'draw') {
-      teamARow.ties = Math.max(0, teamARow.ties - 1);
-      teamARow.points = Math.max(0, teamARow.points - 1);
-      teamBRow.ties = Math.max(0, teamBRow.ties - 1);
-      teamBRow.points = Math.max(0, teamBRow.points - 1);
-    } else if (match.result === 'super_over') {
-    } else {
-      teamARow.ties = Math.max(0, teamARow.ties - 1);
-      teamARow.points = Math.max(0, teamARow.points - 1);
-      teamBRow.ties = Math.max(0, teamBRow.ties - 1);
-      teamBRow.points = Math.max(0, teamBRow.points - 1);
-    }
-
-    await this.updateNrrAccumulators(
-      match,
-      teamARow,
-      teamBRow,
-      'subtract',
-      transaction,
+  async recalculateTournamentStandings(
+    tournamentId: number,
+    transaction?: Transaction,
+  ): Promise<void> {
+    await this.pointsTableModel.update(
+      {
+        matches_played: 0,
+        wins: 0,
+        losses: 0,
+        ties: 0,
+        no_results: 0,
+        points: 0,
+        runs_scored: 0,
+        balls_faced: 0,
+        runs_conceded: 0,
+        balls_bowled: 0,
+        net_run_rate: null,
+      },
+      {
+        where: { tournament_id: tournamentId },
+        transaction,
+      },
     );
 
-    this.recalculateNrr(teamARow);
-    this.recalculateNrr(teamBRow);
+    const completedMatches = await this.matchModel.findAll({
+      where: {
+        tournament_id: tournamentId,
+        status: 'completed',
+      },
+      transaction,
+    });
 
-    await teamARow.save({ transaction });
-    await teamBRow.save({ transaction });
+    const existingRows = await this.pointsTableModel.findAll({
+      where: { tournament_id: tournamentId },
+      transaction,
+    });
+    const rowsMap = new Map(existingRows.map((r) => [r.team_id, r]));
+
+    const getRow = async (teamId: number) => {
+      if (rowsMap.has(teamId)) return rowsMap.get(teamId)!;
+      const row = await this.findOrCreateRow(tournamentId, teamId, transaction);
+      rowsMap.set(teamId, row);
+      return row;
+    };
+
+    for (const match of completedMatches) {
+      const teamARow = await getRow(match.team_a_id);
+      const teamBRow = await getRow(match.team_b_id);
+
+      teamARow.matches_played += 1;
+      teamBRow.matches_played += 1;
+
+      if (match.winner_team_id) {
+        if (match.winner_team_id === match.team_a_id) {
+          teamARow.wins += 1;
+          teamARow.points += 2;
+          teamBRow.losses += 1;
+        } else {
+          teamBRow.wins += 1;
+          teamBRow.points += 2;
+          teamARow.losses += 1;
+        }
+      } else if (match.result === 'no_result') {
+        teamARow.no_results += 1;
+        teamARow.points += 1;
+        teamBRow.no_results += 1;
+        teamBRow.points += 1;
+      } else if (match.result === 'tie' || match.result === 'draw') {
+        teamARow.ties += 1;
+        teamARow.points += 1;
+        teamBRow.ties += 1;
+        teamBRow.points += 1;
+      } else if (match.result === 'super_over') {
+        teamARow.matches_played -= 1;
+        teamBRow.matches_played -= 1;
+      } else {
+        teamARow.ties += 1;
+        teamARow.points += 1;
+        teamBRow.ties += 1;
+        teamBRow.points += 1;
+      }
+
+      await this.updateNrrAccumulators(
+        match,
+        teamARow,
+        teamBRow,
+        'add',
+        transaction,
+      );
+    }
+
+    for (const row of rowsMap.values()) {
+      this.recalculateNrr(row);
+      await row.save({ transaction });
+    }
   }
 
   async getStandings(
@@ -245,17 +262,30 @@ export class PointsTableService {
       transaction,
     });
 
-    if (matchInnings.length < 2) {
+    const innings1List = matchInnings.filter((i) => i.innings_number === 1);
+    const innings2List = matchInnings.filter((i) => i.innings_number === 2);
+
+    if (innings1List.length === 0 || innings2List.length === 0) {
       return;
     }
 
-    const innings1 = matchInnings.find((i) => i.innings_number === 1);
-    const innings2 = matchInnings.find((i) => i.innings_number === 2);
+    const innings1 = innings1List.sort(
+      (a, b) => b.balls + b.total_runs - (a.balls + a.total_runs),
+    )[0];
+    const innings2 = innings2List.sort(
+      (a, b) => b.balls + b.total_runs - (a.balls + a.total_runs),
+    )[0];
 
-    if (!innings1 || !innings2) return;
+    let innings1Balls = innings1.overs * 6 + innings1.balls;
+    let innings2Balls = innings2.overs * 6 + innings2.balls;
 
-    const innings1Balls = innings1.overs * 6 + innings1.balls;
-    const innings2Balls = innings2.overs * 6 + innings2.balls;
+    const matchOvers = match.overs_per_side || 20;
+    if (innings1.wickets >= innings1.max_wickets) {
+      innings1Balls = matchOvers * 6;
+    }
+    if (innings2.wickets >= innings2.max_wickets) {
+      innings2Balls = matchOvers * 6;
+    }
 
     const battingTeam1Id = innings1.batting_team_id;
     const battingTeam2Id = innings2.batting_team_id;

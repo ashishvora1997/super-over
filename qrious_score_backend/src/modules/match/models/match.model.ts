@@ -11,14 +11,22 @@ import {
 
 import { Tournament } from '../../tournament/models/tournament.model';
 import { Team } from '../../teams/models/teams.model';
+import { User } from '../../users/models/user.model';
 import { Toss } from 'src/modules/toss/models/toss.model';
 import { Innings } from 'src/modules/innings/models/innings.model';
+import { Rules } from 'src/modules/tournament/models/rules.model';
+import { MatchScorer } from './match-scorer.model';
 
-@Table({ tableName: 'matches' })
+@Table({
+  tableName: 'matches',
+  timestamps: true,
+})
 export class Match extends Model {
   @ForeignKey(() => Tournament)
-  @Column
-  declare tournament_id: number;
+  @Column({
+    allowNull: true,
+  })
+  declare tournament_id: number | null;
 
   @ForeignKey(() => Team)
   @Column
@@ -40,8 +48,22 @@ export class Match extends Model {
   })
   declare status: 'scheduled' | 'live' | 'completed';
 
-  @Column({ allowNull: false, defaultValue: 20 })
+  @Column({
+    allowNull: false,
+    defaultValue: 20,
+  })
   declare overs_per_side: number;
+
+  @Column({
+    allowNull: true,
+  })
+  declare overs_per_bowler: number | null;
+
+  @ForeignKey(() => User)
+  @Column({
+    allowNull: true,
+  })
+  declare created_by: number | null;
 
   @ForeignKey(() => Team)
   @Column
@@ -53,15 +75,27 @@ export class Match extends Model {
   })
   declare result: 'win' | 'tie' | 'no_result' | 'super_over' | 'draw' | null;
 
-  @Column({ defaultValue: false })
+  @Column({
+    defaultValue: false,
+  })
   declare is_super_over: boolean;
 
-  @Column({ defaultValue: 0 })
+  @Column({
+    defaultValue: 0,
+  })
   declare super_over_number: number;
 
   @ForeignKey(() => Team)
-  @Column({ allowNull: true })
-  declare super_over_chasing_team_id: number;
+  @Column({
+    allowNull: true,
+  })
+  declare super_over_chasing_team_id: number | null;
+
+  @ForeignKey(() => User)
+  @Column({
+    allowNull: true,
+  })
+  declare active_scorer_id: number | null;
 
   @BelongsTo(() => Tournament)
   declare tournament: Tournament;
@@ -75,9 +109,21 @@ export class Match extends Model {
   @BelongsTo(() => Team, 'winner_team_id')
   declare winner: Team;
 
+  @BelongsTo(() => User, 'created_by')
+  declare creator: User;
+
+  @BelongsTo(() => User, 'active_scorer_id')
+  declare activeScorer: User;
+
   @HasOne(() => Toss)
   declare toss: Toss;
 
   @HasMany(() => Innings)
   declare innings: Innings[];
+
+  @HasOne(() => Rules)
+  declare rules: Rules;
+
+  @HasMany(() => MatchScorer)
+  declare matchScorers: MatchScorer[];
 }

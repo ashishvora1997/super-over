@@ -1,4 +1,4 @@
-import { User } from "../store/auth.store";
+import { User } from "./auth.types";
 
 export interface SuccessResponse<T> {
   success: boolean;
@@ -33,5 +33,5 @@ export interface ResetPasswordDto {
 
 export interface AuthResponse {
   user: User;
-  token: string;
+  accessToken: string;
 }

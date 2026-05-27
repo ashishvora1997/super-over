@@ -2,10 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { getMyProfile, upsertProfile } from "@/app/services/profile.service";
+import { logoutAllDevices } from "@/app/services/auth.service";
 import { useAuthStore } from "@/app/store/auth.store";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { Select } from "@/app/components/ui/select";
+import { ConfirmModal } from "@/app/components/ui/modal/confirm-modal";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+import { getErrorMessage } from "@/app/utils/error-handler";
 import {
   UserCircle,
   Loader2,
@@ -16,6 +21,7 @@ import {
   Activity,
   ChevronRight,
   Shield,
+  LogOut,
 } from "lucide-react";
 import {
   PLAYING_ROLE_OPTIONS,
@@ -167,6 +173,8 @@ function SectionHeader({
 export default function ProfilePage() {
   const user = useAuthStore((s) => s.user);
   const updateUser = useAuthStore((s) => s.updateUser);
+  const clearAuth = useAuthStore((s) => s.clearAuth);
+  const router = useRouter();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -181,6 +189,24 @@ export default function ProfilePage() {
   const [role, setRole] = useState<PlayingRole>("none");
   const [bat, setBat] = useState<BattingStyle>("none");
   const [bowl, setBowl] = useState<BowlingStyle>("none");
+
+  const [showLogoutAllModal, setShowLogoutAllModal] = useState(false);
+  const [loggingOutAll, setLoggingOutAll] = useState(false);
+
+  const handleLogoutAllDevices = async () => {
+    setLoggingOutAll(true);
+    try {
+      await logoutAllDevices();
+      clearAuth();
+      router.replace("/login");
+      toast.success("Logged out from all devices successfully");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setLoggingOutAll(false);
+      setShowLogoutAllModal(false);
+    }
+  };
 
   const fetchProfile = async () => {
     setLoading(true);
@@ -540,6 +566,45 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+
+      <div className="bg-white border border-border rounded-2xl overflow-hidden shadow-sm">
+        <SectionHeader icon={Shield} title="Security" />
+        <div className="p-5 pt-3">
+          <div className="flex items-center justify-between gap-4 p-4 bg-red-50/60 border border-red-100 rounded-xl">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                <LogOut className="w-4 h-4 text-red-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">
+                  Logout from all devices
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  End all active sessions on other devices and browsers
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="danger"
+              onClick={() => setShowLogoutAllModal(true)}
+              className="flex-shrink-0 px-4 py-2 h-9 text-xs"
+            >
+              Logout All
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <ConfirmModal
+        open={showLogoutAllModal}
+        onClose={() => setShowLogoutAllModal(false)}
+        onConfirm={handleLogoutAllDevices}
+        title="Logout from all devices?"
+        description="You will be logged out from all active sessions on other devices and browsers. You will need to login again everywhere."
+        confirmText="Logout All Devices"
+        loading={loggingOutAll}
+        variant="danger"
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -13,6 +14,8 @@ import { CreateTossDto } from './dtos/create-toss.dto';
 import { SuccessResponse } from 'src/common/types/response.type';
 import { successResponse } from 'src/common/utils/response.util';
 
+import { TeamPlayer } from '../teams/models/team-player.model';
+
 @Injectable()
 export class TossService {
   constructor(
@@ -24,16 +27,26 @@ export class TossService {
 
     @InjectModel(Match)
     private matchModel: typeof Match,
+
+    @InjectModel(TeamPlayer)
+    private teamPlayerModel: typeof TeamPlayer,
   ) {}
 
   async create(
     matchId: number,
     dto: CreateTossDto,
+    userId: number,
   ): Promise<SuccessResponse<Toss>> {
     const match = await this.matchModel.findByPk(matchId);
 
     if (!match) {
       throw new NotFoundException('Match not found');
+    }
+
+    if (match.created_by !== userId) {
+      throw new ForbiddenException(
+        'Only the match organizer can conduct the toss',
+      );
     }
 
     if (match.status === 'completed') {
@@ -46,6 +59,19 @@ export class TossService {
 
     if (existingToss) {
       throw new BadRequestException('Toss already recorded for this match');
+    }
+
+    const teamA_players = await this.teamPlayerModel.count({
+      where: { team_id: match.team_a_id },
+    });
+    const teamB_players = await this.teamPlayerModel.count({
+      where: { team_id: match.team_b_id },
+    });
+
+    if (teamA_players < 2 || teamB_players < 2) {
+      throw new BadRequestException(
+        'Both teams must have at least 2 players to start the match',
+      );
     }
 
     const { toss_winner_team_id, elected_to } = dto;

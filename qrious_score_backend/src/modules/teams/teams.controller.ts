@@ -1,6 +1,4 @@
-import 'multer';
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -9,37 +7,39 @@ import {
   Patch,
   Post,
   Query,
-  UploadedFile,
+  Req,
   UseGuards,
-  UseInterceptors,
 } from '@nestjs/common';
+import { Request } from 'express';
+
 import { TeamsService } from './teams.service';
 import { CreateTeamDto } from './dtos/create-team.dto';
 import { UpdateTeamDto } from './dtos/update-team.dto';
-import { AssignPlayersDto } from './dtos/assign-players.dto';
+import { AddPlayerByEmailDto } from './dtos/add-player-by-email.dto';
 import { FindTeamsQuery } from './interfaces/find-teams-query.interface';
-import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/common/guards/roles.guard';
 import { SetCaptainDto } from './dtos/set-captain.dto';
-import { Roles } from 'src/common/decorators/roles.decorator';
 import { SetWicketKeeperDto } from './dtos/set-wicket-keeper.dto';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { multerConfig } from 'src/database/config/multer.config';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+
+interface RequestWithUser extends Request {
+  user: { id: number; email: string };
+}
+
+@UseGuards(JwtAuthGuard)
 @Controller('teams')
 export class TeamsController {
   constructor(private readonly teamsService: TeamsService) {}
 
   @Post()
-  @Roles('scorer')
-  create(@Body() data: CreateTeamDto) {
+  create(@Body() data: CreateTeamDto, @Req() req: RequestWithUser) {
+    data.created_by = req.user.id;
     return this.teamsService.create(data);
   }
 
   @Get()
-  findAll(@Query() query: FindTeamsQuery) {
-    return this.teamsService.findAll(query);
+  findAll(@Query() query: FindTeamsQuery, @Req() req: RequestWithUser) {
+    return this.teamsService.findAll(query, req.user.id);
   }
 
   @Get('list')
@@ -53,43 +53,50 @@ export class TeamsController {
   }
 
   @Patch(':id')
-  @Roles('scorer')
-  update(@Param('id') id: number, @Body() data: UpdateTeamDto) {
-    return this.teamsService.update(Number(id), data);
+  update(
+    @Param('id') id: number,
+    @Body() data: UpdateTeamDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.teamsService.update(Number(id), data, req.user.id);
   }
 
   @Delete(':id')
-  @Roles('admin')
-  delete(@Param('id') id: number) {
-    return this.teamsService.delete(Number(id));
+  delete(@Param('id') id: number, @Req() req: RequestWithUser) {
+    return this.teamsService.delete(Number(id), req.user.id);
   }
 
-  @Post('assign-players')
-  @Roles('scorer')
-  assignPlayers(@Body() data: AssignPlayersDto) {
-    return this.teamsService.assignPlayers(data);
+  @Delete(':id/players/:playerId')
+  removePlayer(
+    @Param('id') id: number,
+    @Param('playerId') playerId: number,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.teamsService.removePlayer(
+      Number(id),
+      Number(playerId),
+      req.user.id,
+    );
   }
 
   @Post('set-captain')
-  @Roles('admin', 'scorer')
-  setCap(@Body() data: SetCaptainDto) {
-    return this.teamsService.setCaptain(data);
+  setCap(@Body() data: SetCaptainDto, @Req() req: RequestWithUser) {
+    return this.teamsService.setCaptain(data, req.user.id);
   }
 
   @Post('set-wicket-keeper')
-  @Roles('admin', 'scorer')
-  setWicketKeeper(@Body() data: SetWicketKeeperDto) {
-    return this.teamsService.setWicketKeeper(data);
+  setWicketKeeper(
+    @Body() data: SetWicketKeeperDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.teamsService.setWicketKeeper(data, req.user.id);
   }
 
-  @Post('bulk-upload')
-  @Roles('scorer')
-  @UseInterceptors(FileInterceptor('file', multerConfig))
-  async bulkUpload(@UploadedFile() file: Express.Multer.File) {
-    if (!file) {
-      throw new BadRequestException('File is required');
-    }
-
-    return this.teamsService.handleBulkUpload(file);
+  @Post('add-player-by-email')
+  addPlayerByEmail(
+    @Body() data: AddPlayerByEmailDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.teamsService.addPlayerByEmail(data, req.user.id);
   }
 }

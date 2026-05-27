@@ -1,36 +1,36 @@
 "use client";
 
-import { Suspense } from "react";
+import  Suspense } from "react";
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { resetPassword } from "@/app/services/auth.service";
+import  useForm } from "react-hook-form";
+import  zodResolver } from "@hookform/resolvers/zod";
+import  z } from "zod";
+import  resetPassword } from "@/app/services/auth.service";
 import toast from "react-hot-toast";
-import { getErrorMessage } from "@/app/utils/error-handler";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
-import { Input } from "@/app/components/ui/input";
-import { Button } from "@/app/components/ui/button";
+import  getErrorMessage } from "@/app/utils/error-handler";
+import  useRouter, useSearchParams } from "next/navigation";
+import  useEffect } from "react";
+import  Input } from "@/app/components/ui/input";
+import  Button } from "@/app/components/ui/button";
 
 const resetSchema = z
-  .object({
+  .object(
     password: z
       .string()
       .min(1, "Password is required")
       .min(6, "Password must be at least 6 characters"),
     confirmPassword: z.string().min(1, "Confirm your password"),
   })
-  .refine((data) => data.password === data.confirmPassword, {
+  .refine((data) => data.password === data.confirmPassword, 
     message: "Passwords do not match",
     path: ["confirmPassword"],
   });
 
 type ResetForm = z.infer<typeof resetSchema>;
 
-export default function ResetPasswordPage() {
+export default function ResetPasswordPage() 
   return (
-    <Suspense fallback={<div className="text-center mt-10">Loading...</div>}>
+    <Suspense fallback=<div className="text-center mt-10">Loading...</div>}>
       <ResetPasswordContent />
     </Suspense>
   );

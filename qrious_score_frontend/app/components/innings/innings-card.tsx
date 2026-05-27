@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Users, Play, RefreshCw } from "lucide-react";
 import { FormModal } from "@/app/components/ui/modal/form-modal";
 import { Select } from "@/app/components/ui/select";
-import { RoleGuard } from "@/app/components/auth/role-guard";
 import { Match } from "@/app/types/match.types";
 import toast from "react-hot-toast";
 import { getErrorMessage } from "@/app/utils/error-handler";
@@ -14,6 +13,7 @@ import {
   UpdateInningsPlayersPayload,
 } from "@/app/types/innings.types";
 import { useInningsStore } from "@/app/store/innings.store";
+import { useAuthStore } from "@/app/store/auth.store";
 
 interface TeamPlayer {
   id: number;
@@ -145,7 +145,10 @@ function StartInningsModal({
         value={String(strikerId)}
         onChange={(val) => setStrikerId(val ? Number(val) : "")}
         placeholder="Select batsman..."
-        options={availableStrikers.map((p) => ({ label: p.name, value: String(p.id) }))}
+        options={availableStrikers.map((p) => ({
+          label: p.name,
+          value: String(p.id),
+        }))}
       />
 
       <Select
@@ -153,7 +156,10 @@ function StartInningsModal({
         value={String(nonStrikerId)}
         onChange={(val) => setNonStrikerId(val ? Number(val) : "")}
         placeholder="Select batsman..."
-        options={availableNonStrikers.map((p) => ({ label: p.name, value: String(p.id) }))}
+        options={availableNonStrikers.map((p) => ({
+          label: p.name,
+          value: String(p.id),
+        }))}
       />
 
       <Select
@@ -161,7 +167,10 @@ function StartInningsModal({
         value={String(bowlerId)}
         onChange={(val) => setBowlerId(val ? Number(val) : "")}
         placeholder="Select bowler..."
-        options={bowlingPlayers.map((p) => ({ label: p.name, value: String(p.id) }))}
+        options={bowlingPlayers.map((p) => ({
+          label: p.name,
+          value: String(p.id),
+        }))}
       />
     </FormModal>
   );
@@ -235,7 +244,10 @@ function UpdatePlayersModal({
         value={String(strikerId)}
         onChange={(val) => setStrikerId(val ? Number(val) : "")}
         placeholder="Keep current"
-        options={availableStrikers.map((p) => ({ label: p.name, value: String(p.id) }))}
+        options={availableStrikers.map((p) => ({
+          label: p.name,
+          value: String(p.id),
+        }))}
       />
 
       <Select
@@ -243,7 +255,10 @@ function UpdatePlayersModal({
         value={String(nonStrikerId)}
         onChange={(val) => setNonStrikerId(val ? Number(val) : "")}
         placeholder="Keep current"
-        options={availableNonStrikers.map((p) => ({ label: p.name, value: String(p.id) }))}
+        options={availableNonStrikers.map((p) => ({
+          label: p.name,
+          value: String(p.id),
+        }))}
       />
 
       <Select
@@ -251,7 +266,10 @@ function UpdatePlayersModal({
         value={String(bowlerId)}
         onChange={(val) => setBowlerId(val ? Number(val) : "")}
         placeholder="Keep current"
-        options={bowlingPlayers.map((p) => ({ label: p.name, value: String(p.id) }))}
+        options={bowlingPlayers.map((p) => ({
+          label: p.name,
+          value: String(p.id),
+        }))}
       />
     </FormModal>
   );
@@ -276,6 +294,11 @@ export function InningsCard({
 }: Props) {
   const [startOpen, setStartOpen] = useState(false);
   const [updateOpen, setUpdateOpen] = useState(false);
+  const user = useAuthStore((s) => s.user);
+
+  const isMatchAdmin = user && match.created_by === user.id;
+  const isActiveScorer = user && match.active_scorer_id === user.id;
+  const canModifyInnings = isMatchAdmin || isActiveScorer;
 
   const oversDisplay =
     innings.balls > 0
@@ -293,26 +316,24 @@ export function InningsCard({
             <InningsStatusBadge status={innings.status} />
           </div>
 
-          <RoleGuard allowedRoles={["admin", "scorer"]}>
-            {innings.status === "not_started" && (
-              <button
-                onClick={() => setStartOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white text-xs font-semibold rounded-lg shadow-sm shadow-accent/25 hover:bg-accent-dark transition-all active:scale-95"
-              >
-                <Play size={11} />
-                Start
-              </button>
-            )}
-            {innings.status === "in_progress" && (
-              <button
-                onClick={() => setUpdateOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-xs font-semibold rounded-lg hover:bg-primary/20 transition-all"
-              >
-                <RefreshCw size={11} />
-                Change players
-              </button>
-            )}
-          </RoleGuard>
+          {innings.status === "not_started" && canModifyInnings && (
+            <button
+              onClick={() => setStartOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white text-xs font-semibold rounded-lg shadow-sm shadow-accent/25 hover:bg-accent-dark transition-all active:scale-95"
+            >
+              <Play size={11} />
+              Start
+            </button>
+          )}
+          {innings.status === "in_progress" && canModifyInnings && (
+            <button
+              onClick={() => setUpdateOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-xs font-semibold rounded-lg hover:bg-primary/20 transition-all"
+            >
+              <RefreshCw size={11} />
+              Change players
+            </button>
+          )}
         </div>
 
         <div className="px-4 py-3 flex items-center justify-between">

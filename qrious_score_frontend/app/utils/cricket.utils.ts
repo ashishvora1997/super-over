@@ -10,10 +10,29 @@ export function currentRunRate(runs: number, overs: number, balls: number) {
   return (runs / totalOvers).toFixed(2);
 }
 
+export function isBowlerWicket(event: BallEvent): boolean {
+  return (
+    event.is_wicket &&
+    event.wicket_type !== "retired_hurt" &&
+    event.wicket_type !== "run_out"
+  );
+}
+
+export function isInningsWicket(event: BallEvent): boolean {
+  return event.is_wicket && event.wicket_type !== "retired_hurt";
+}
+
 export function getBallLabel(event: BallEvent): string {
+  if (event.is_wicket && event.wicket_type === "retired_hurt") return "RH";
   if (event.is_wicket) return "W";
-  if (event.extra_type === "wide")
-    return `Wd${event.runs_extra > 1 ? "+" + (event.runs_extra - 1) : ""}`;
+  if (event.extra_type === "wide") {
+    const penalty =
+      event.metadata && typeof event.metadata["penalty_runs"] === "number"
+        ? event.metadata["penalty_runs"]
+        : 1;
+    const additionalRuns = event.runs_extra - penalty;
+    return additionalRuns > 0 ? `Wd+${additionalRuns}` : "Wd";
+  }
   if (event.extra_type === "no_ball") {
     const batRuns = event.runs_bat;
     return `Nb${batRuns > 0 ? "+" + batRuns : ""}`;
@@ -24,6 +43,8 @@ export function getBallLabel(event: BallEvent): string {
 }
 
 export function getBallColor(event: BallEvent): string {
+  if (event.is_wicket && event.wicket_type === "retired_hurt")
+    return "bg-slate-400 text-white ring-slate-300";
   if (event.is_wicket) return "bg-red-500 text-white ring-red-300";
   if (event.extra_type === "wide" || event.extra_type === "no_ball")
     return "bg-amber-400 text-amber-900 ring-amber-200";
@@ -33,4 +54,17 @@ export function getBallColor(event: BallEvent): string {
   if (event.runs_bat === 6) return "bg-purple-500 text-white ring-purple-300";
   if (event.runs_bat === 0) return "bg-gray-200 text-gray-600 ring-gray-300";
   return "bg-blue-100 text-blue-700 ring-blue-200";
+}
+
+export function getTeamAvatarText(name: string): string {
+  if (!name) return "";
+  const words = name.split(" ").filter((w) => w.trim().length > 0);
+  if (words.length === 1) {
+    return words[0].slice(0, 3).toUpperCase();
+  }
+  return words
+    .slice(0, 3)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
 }
